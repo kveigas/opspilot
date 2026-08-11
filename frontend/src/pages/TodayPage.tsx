@@ -104,7 +104,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
       </div>
 
       {isLoading ? (
-        <div className="p-8 text-center text-slate-400 text-sm animate-pulse">
+        <div className="p-8 text-center text-slate-300 text-sm animate-pulse">
           Starting OpsPilot demo environment... (initial cold start may take ~20 seconds)
         </div>
       ) : cockpit && (

@@ -8,29 +8,37 @@ export const DeliveryPage: React.FC = () => {
   const [readiness, setReadiness] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const campData = await api.getCampaigns();
-      setCampaigns(campData);
-      if (campData.length > 0 && !selectedCampaignId) {
-        setSelectedCampaignId(campData[0].id);
+  useEffect(() => {
+    api.getCampaigns().then((data) => {
+      setCampaigns(data);
+      if (data.length > 0) {
+        setSelectedCampaignId(data[0].id);
+      } else {
+        setIsLoading(false);
       }
-
-      if (selectedCampaignId) {
-        const data = await api.getDeliveryReadiness(selectedCampaignId);
-        setReadiness(data);
-      }
-    } catch (err) {
-      console.error('Failed to load delivery readiness page data', err);
-    } finally {
+    }).catch((err) => {
+      console.error('Failed to load campaigns', err);
       setIsLoading(false);
-    }
-  };
+    });
+  }, []);
 
   useEffect(() => {
-    loadData();
+    if (!selectedCampaignId) return;
+    setIsLoading(true);
+    api.getDeliveryReadiness(selectedCampaignId)
+      .then((data) => setReadiness(data))
+      .catch((err) => console.error('Failed to load delivery readiness', err))
+      .finally(() => setIsLoading(false));
   }, [selectedCampaignId]);
+
+  const refreshReadiness = () => {
+    if (!selectedCampaignId) return;
+    setIsLoading(true);
+    api.getDeliveryReadiness(selectedCampaignId)
+      .then((data) => setReadiness(data))
+      .catch((err) => console.error('Failed to load delivery readiness', err))
+      .finally(() => setIsLoading(false));
+  };
 
   return (
     <div className="space-y-6">
@@ -79,7 +87,7 @@ export const DeliveryPage: React.FC = () => {
           </div>
 
           <button
-            onClick={loadData}
+            onClick={refreshReadiness}
             className="px-3 py-1.5 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
           >
             🔄 Re-Evaluate Gates
@@ -89,7 +97,7 @@ export const DeliveryPage: React.FC = () => {
 
       {/* 5 Gate Checklist */}
       {isLoading ? (
-        <div className="p-8 text-center text-slate-400 text-sm">Evaluating delivery gates...</div>
+        <div className="p-8 text-center text-slate-300 text-sm">Evaluating delivery gates...</div>
       ) : readiness && (
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-slate-200">Mandatory Delivery Gate Checklist</h2>
