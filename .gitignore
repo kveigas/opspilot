@@ -18,6 +18,9 @@ playwright-report/
 *.db
 *.sqlite
 *.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
 
 # Node / Frontend
 node_modules/
