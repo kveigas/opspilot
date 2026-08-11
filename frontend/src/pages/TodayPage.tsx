@@ -285,6 +285,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
             <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Operational Audit Stream</h2>
             <div
               tabIndex={0}
+              role="region"
               aria-label="Operational audit stream"
               className="space-y-2 max-h-48 overflow-y-auto pr-2 focus:outline-none focus:ring-1 focus:ring-emerald-500 rounded"
             >
