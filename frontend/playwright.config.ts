@@ -13,6 +13,9 @@ export default defineConfig({
       url: 'http://127.0.0.1:8000/api/v1/health',
       reuseExistingServer: true,
       cwd: '../backend',
+      env: {
+        PYTHONPATH: '.',
+      },
     },
     {
       command: 'npm run preview -- --port 5173',
