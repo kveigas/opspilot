@@ -52,12 +52,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install fastapi uvicorn sqlalchemy pydantic httpx
 
-      - name: Start FastAPI Backend Server
-        working-directory: ./backend
-        run: |
-          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 &
-          npx wait-on http://127.0.0.1:8000/api/v1/health
-
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -90,3 +84,5 @@ jobs:
       - name: Run Playwright E2E & Axe Accessibility Suite
         working-directory: ./frontend
         run: npx playwright test --workers=1
+        env:
+          PYTHONPATH: ../backend

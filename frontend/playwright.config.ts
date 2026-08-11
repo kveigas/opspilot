@@ -9,7 +9,9 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'python -m uvicorn app.main:app --port 8000',
+      command: process.platform === 'win32'
+        ? 'python -m uvicorn app.main:app --port 8000'
+        : 'python3 -m uvicorn app.main:app --port 8000',
       url: 'http://127.0.0.1:8000/api/v1/health',
       reuseExistingServer: true,
       cwd: '../backend',
