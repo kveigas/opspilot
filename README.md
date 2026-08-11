@@ -7,6 +7,12 @@
 
 OpsPilot is a production-grade, rules-based operational control system designed for **AI Data Operations Managers**, **Human Data Operations Leads**, and **AI Evaluation Program Managers**. It manages the end-to-end lifecycle of high-stakes human data annotation and evaluation campaigns — from intake and workforce calibration through deterministic allocation, 10-state task execution, QA review sampling, SLA risk monitoring, and delivery gate validation.
 
+### 🌐 Live Public Deployment
+
+- 🚀 **Live Public Demo**: [https://kveigas.github.io/opspilot/](https://kveigas.github.io/opspilot/)
+- ⚙️ **Live API Base**: [https://opspilot-api.onrender.com](https://opspilot-api.onrender.com)
+- 📖 **Interactive API Docs**: [https://opspilot-api.onrender.com/docs](https://opspilot-api.onrender.com/docs)
+
 ---
 
 ## 🎯 Core Operational Purpose
