@@ -156,18 +156,20 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
             {/* Critical Campaigns */}
             <div className="bg-rose-950/30 border border-rose-900/80 rounded-lg p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-rose-400 uppercase tracking-wider">CRITICAL Campaigns ({cockpit.critical_campaigns.length})</h2>
+                <h2 className="text-sm font-bold text-rose-400 uppercase tracking-wider">
+                  CRITICAL Campaigns ({(cockpit.critical_campaigns || []).length})
+                </h2>
                 {onNavigate && (
                   <button onClick={() => onNavigate('campaigns')} className="text-xs text-rose-300 underline font-semibold">
                     View Campaigns →
                   </button>
                 )}
               </div>
-              {cockpit.critical_campaigns.length === 0 ? (
+              {(cockpit.critical_campaigns || []).length === 0 ? (
                 <p className="text-xs text-slate-400">Zero campaigns currently in CRITICAL SLA status.</p>
               ) : (
                 <div className="space-y-2">
-                  {cockpit.critical_campaigns.map((c: any) => (
+                  {(cockpit.critical_campaigns || []).map((c: any) => (
                     <div key={c.campaign_id} className="bg-slate-900/80 border border-rose-900/50 rounded p-3 text-xs space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-slate-200">{c.name}</span>
@@ -186,18 +188,20 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
             {/* At Risk Campaigns */}
             <div className="bg-amber-950/30 border border-amber-900/80 rounded-lg p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider">AT_RISK Campaigns ({cockpit.at_risk_campaigns.length})</h2>
+                <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider">
+                  AT_RISK Campaigns ({(cockpit.at_risk_campaigns || []).length})
+                </h2>
                 {onNavigate && (
                   <button onClick={() => onNavigate('campaigns')} className="text-xs text-amber-300 underline font-semibold">
                     View Campaigns →
                   </button>
                 )}
               </div>
-              {cockpit.at_risk_campaigns.length === 0 ? (
+              {(cockpit.at_risk_campaigns || []).length === 0 ? (
                 <p className="text-xs text-slate-400">Zero campaigns currently in AT_RISK SLA status.</p>
               ) : (
                 <div className="space-y-2">
-                  {cockpit.at_risk_campaigns.map((c: any) => (
+                  {(cockpit.at_risk_campaigns || []).map((c: any) => (
                     <div key={c.campaign_id} className="bg-slate-900/80 border border-amber-900/50 rounded p-3 text-xs space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-slate-200">{c.name}</span>
@@ -221,14 +225,14 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Open Escalations</h3>
                 <span className="px-2 py-0.5 text-xs font-bold rounded bg-rose-950 text-rose-300 border border-rose-900">
-                  {cockpit.open_escalations.length}
+                  {(cockpit.open_escalations || []).length}
                 </span>
               </div>
-              {cockpit.open_escalations.length === 0 ? (
+              {(cockpit.open_escalations || []).length === 0 ? (
                 <p className="text-xs text-slate-500">Zero open escalations requiring intervention.</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {cockpit.open_escalations.map((e: any) => (
+                  {(cockpit.open_escalations || []).map((e: any) => (
                     <div key={e.id} className="bg-slate-950 border border-slate-800 rounded p-2 text-xs space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-rose-300">{e.severity}</span>
@@ -251,14 +255,14 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Unallocated Backlog</h3>
                 <span className="px-2 py-0.5 text-xs font-bold rounded bg-amber-950 text-amber-300 border border-amber-900">
-                  {cockpit.unallocated_backlog_summary.length} Campaigns
+                  {(cockpit.unallocated_backlog_summary || []).length} Campaigns
                 </span>
               </div>
-              {cockpit.unallocated_backlog_summary.length === 0 ? (
+              {(cockpit.unallocated_backlog_summary || []).length === 0 ? (
                 <p className="text-xs text-slate-500">Zero unallocated task backlogs.</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {cockpit.unallocated_backlog_summary.map((b: any) => (
+                  {(cockpit.unallocated_backlog_summary || []).map((b: any) => (
                     <div key={b.campaign_id} className="bg-slate-950 border border-slate-800 rounded p-2 text-xs flex items-center justify-between">
                       <div>
                         <span className="font-semibold text-slate-200 block truncate">{b.campaign_name}</span>
@@ -280,14 +284,14 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">QA Review Backlog</h3>
                 <span className="px-2 py-0.5 text-xs font-bold rounded bg-blue-950 text-blue-300 border border-blue-900">
-                  {cockpit.qa_review_backlog_summary.length} Campaigns
+                  {(cockpit.qa_review_backlog_summary || []).length} Campaigns
                 </span>
               </div>
-              {cockpit.qa_review_backlog_summary.length === 0 ? (
+              {(cockpit.qa_review_backlog_summary || []).length === 0 ? (
                 <p className="text-xs text-slate-500">Zero QA review backlogs.</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {cockpit.qa_review_backlog_summary.map((q: any) => (
+                  {(cockpit.qa_review_backlog_summary || []).map((q: any) => (
                     <div key={q.campaign_id} className="bg-slate-950 border border-slate-800 rounded p-2 text-xs flex items-center justify-between">
                       <div>
                         <span className="font-semibold text-slate-200 block truncate">{q.campaign_name}</span>
