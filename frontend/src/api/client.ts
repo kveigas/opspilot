@@ -223,7 +223,7 @@ export const api = {
   getDeliveryReadiness: (campaignId: string) => fetchApi<any>(`/campaigns/${campaignId}/delivery-readiness`),
 
   // Today Cockpit
-  getTodayCockpit: () => fetchApi<any>('/today/cockpit'),
+  getTodayCockpit: () => fetchApi<any>('/today'),
 
   // Flagship Recruiter Demo Bootstrap
   bootstrapDemo: (reset: boolean = true) =>

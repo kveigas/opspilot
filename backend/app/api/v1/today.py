@@ -7,5 +7,6 @@ router = APIRouter(prefix="/today", tags=["Today Cockpit"])
 
 
 @router.get("")
+@router.get("/cockpit")
 def api_get_today_cockpit(db: Session = Depends(get_db)):
     return get_today_manager_cockpit(db)

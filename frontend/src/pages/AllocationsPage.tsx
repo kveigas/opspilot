@@ -26,10 +26,10 @@ export const AllocationsPage: React.FC = () => {
       }
 
       if (selectedCampaignId) {
-        const allocData = await api.getCampaignAllocations(selectedCampaignId);
+        const allocData = await api.getCampaignAllocations(selectedCampaignId).catch(() => []);
         setAllocations(allocData);
 
-        const tasksData = await api.getTasks(selectedCampaignId, 'UNASSIGNED', 1000);
+        const tasksData = await api.getTasks(selectedCampaignId, 'UNASSIGNED', 1000).catch(() => []);
         setUnassignedTaskCount(tasksData.length);
       }
     } catch (err) {
