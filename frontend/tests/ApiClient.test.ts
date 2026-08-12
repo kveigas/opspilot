@@ -64,4 +64,19 @@ describe('execution API client', () => {
       }),
     );
   });
+
+  it('allows the deterministic workday advance to complete within its live processing window', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ delivery_status: 'READY' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.advanceDemoWorkday();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/demo/advance-workday',
+      expect.objectContaining({ method: 'POST', signal: expect.any(AbortSignal) }),
+    );
+  });
 });

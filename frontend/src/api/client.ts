@@ -237,6 +237,7 @@ export const api = {
   advanceDemoWorkday: (campaignId?: string) =>
     fetchApi<any>(`/demo/advance-workday${campaignId ? `?campaign_id=${campaignId}` : ''}`, {
       method: 'POST',
+      timeoutMs: 60000,
     }),
   resetDemo: () => fetchApi<any>('/demo/reset', { method: 'POST' }),
   getDemoProvenance: () => fetchApi<any>('/demo/provenance'),
