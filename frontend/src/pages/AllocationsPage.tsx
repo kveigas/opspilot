@@ -26,10 +26,10 @@ export const AllocationsPage: React.FC = () => {
       }
 
       if (selectedCampaignId) {
-        const allocData = await api.getAllocations({ campaign_id: selectedCampaignId, status: 'ACTIVE' });
+        const allocData = await api.getCampaignAllocations(selectedCampaignId);
         setAllocations(allocData);
 
-        const tasksData = await api.getTasks({ campaign_id: selectedCampaignId, state: 'UNASSIGNED', limit: 1000 });
+        const tasksData = await api.getTasks(selectedCampaignId, 'UNASSIGNED', 1000);
         setUnassignedTaskCount(tasksData.length);
       }
     } catch (err) {
@@ -46,14 +46,14 @@ export const AllocationsPage: React.FC = () => {
   const handleTriggerAllocation = async () => {
     if (!selectedCampaignId) return;
     try {
-      const run = await api.triggerAllocation({
+      const run = await api.triggerAllocationRun({
         campaign_id: selectedCampaignId,
         operational_date: operationalDate,
       });
       setLastRun(run);
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Allocation run failed');
+      console.error('Allocation run failed:', err);
     }
   };
 
@@ -65,17 +65,16 @@ export const AllocationsPage: React.FC = () => {
       setIsTaskModalOpen(false);
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to create task batch');
+      console.error('Failed to create task batch:', err);
     }
   };
 
   const handleReleaseAllocation = async (allocId: string) => {
-    if (!confirm('Release task allocation and restore worker capacity?')) return;
     try {
-      await api.releaseAllocation(allocId, 'MANUAL_RELEASE');
+      await api.transitionTaskState(allocId, 'UNASSIGNED', 'MANUAL_RELEASE');
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to release allocation');
+      console.error('Failed to release allocation:', err);
     }
   };
 

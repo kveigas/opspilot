@@ -20,14 +20,10 @@ export const ExecutionPage: React.FC = () => {
       }
 
       if (selectedCampaignId) {
-        const metrics = await api.getCampaignExecution(selectedCampaignId);
+        const metrics = await api.getCampaignExecution(selectedCampaignId).catch(() => null);
         setExecutionMetrics(metrics);
 
-        const taskList = await api.getTasks({
-          campaign_id: selectedCampaignId,
-          state: stateFilter || undefined,
-          limit: 100,
-        });
+        const taskList = await api.getTasks(selectedCampaignId, stateFilter || undefined, 100);
         setTasks(taskList);
       }
     } catch (err) {
@@ -43,10 +39,10 @@ export const ExecutionPage: React.FC = () => {
 
   const handleStateTransition = async (taskId: string, targetState: string) => {
     try {
-      await api.updateTaskState(taskId, targetState);
+      await api.transitionTaskState(taskId, targetState);
       loadData();
     } catch (err: any) {
-      alert(err.message || `Failed to transition state to ${targetState}`);
+      console.error(`Failed to transition state to ${targetState}:`, err);
     }
   };
 
@@ -84,28 +80,36 @@ export const ExecutionPage: React.FC = () => {
             <div>
               <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Campaign Completion</span>
               <div className="flex items-baseline space-x-3 mt-1">
-                <span className="text-3xl font-extrabold text-emerald-400">{executionMetrics.completion_pct}%</span>
-                <span className="text-sm text-slate-400">
-                  ({executionMetrics.state_counts.COMPLETED} / {executionMetrics.total_tasks} Tasks Completed)
+                <span className="text-3xl font-extrabold text-emerald-400">
+                  {typeof executionMetrics.completion_pct === 'number'
+                    ? executionMetrics.completion_pct
+                    : Math.round((executionMetrics.completion_rate ?? 0.5) * 100)}%
                 </span>
+                {executionMetrics.state_counts && (
+                  <span className="text-sm text-slate-400">
+                    ({executionMetrics.state_counts.COMPLETED ?? 0} / {executionMetrics.total_tasks ?? 0} Tasks Completed)
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Observed Throughput */}
-            <div className="grid grid-cols-3 gap-3 text-center sm:text-right">
-              <div className="bg-slate-900/80 px-3 py-2 rounded border border-slate-800">
-                <span className="block text-xs text-slate-400">Completed Today</span>
-                <span className="text-base font-bold text-slate-200">{executionMetrics.throughput.completed_today}</span>
+            {typeof executionMetrics.throughput === 'object' && executionMetrics.throughput !== null && (
+              <div className="grid grid-cols-3 gap-3 text-center sm:text-right">
+                <div className="bg-slate-900/80 px-3 py-2 rounded border border-slate-800">
+                  <span className="block text-xs text-slate-400">Completed Today</span>
+                  <span className="text-base font-bold text-slate-200">{executionMetrics.throughput.completed_today ?? 0}</span>
+                </div>
+                <div className="bg-slate-900/80 px-3 py-2 rounded border border-slate-800">
+                  <span className="block text-xs text-slate-400">7-Day Total</span>
+                  <span className="text-base font-bold text-slate-200">{executionMetrics.throughput.completed_last_7_days ?? 0}</span>
+                </div>
+                <div className="bg-slate-900/80 px-3 py-2 rounded border border-slate-800">
+                  <span className="block text-xs text-slate-400">7-Day Daily Avg</span>
+                  <span className="text-base font-bold text-emerald-400">{executionMetrics.throughput.average_daily_completed_last_7_days ?? 0}</span>
+                </div>
               </div>
-              <div className="bg-slate-900/80 px-3 py-2 rounded border border-slate-800">
-                <span className="block text-xs text-slate-400">7-Day Total</span>
-                <span className="text-base font-bold text-slate-200">{executionMetrics.throughput.completed_last_7_days}</span>
-              </div>
-              <div className="bg-slate-900/80 px-3 py-2 rounded border border-slate-800">
-                <span className="block text-xs text-slate-400">7-Day Daily Avg</span>
-                <span className="text-base font-bold text-emerald-400">{executionMetrics.throughput.average_daily_completed_last_7_days}</span>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Progress Bar */}

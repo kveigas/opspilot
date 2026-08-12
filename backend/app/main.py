@@ -61,6 +61,14 @@ def create_app() -> FastAPI:
     app_instance.include_router(today.router, prefix=API_V1_STR)
     app_instance.include_router(demo.router, prefix=API_V1_STR)
 
+    @app_instance.get("/health")
+    def health_root():
+        return {
+            "status": "healthy",
+            "service": "OpsPilot API",
+            "phase": "RC1",
+        }
+
     @app_instance.get("/")
     def root():
         return {

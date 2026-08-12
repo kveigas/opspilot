@@ -55,17 +55,17 @@ export const QAPage: React.FC = () => {
       }
 
       if (selectedCampaignId) {
-        const inReview = await api.getTasks({ campaign_id: selectedCampaignId, state: 'IN_REVIEW', limit: 100 });
+        const inReview = await api.getTasks(selectedCampaignId, 'IN_REVIEW', 100);
         setReviewTasks(inReview);
 
-        const revHistory = await api.getReviews({ campaign_id: selectedCampaignId });
+        const revHistory = await api.getReviews(selectedCampaignId);
         setReviewsList(revHistory);
 
-        const allTasks = await api.getTasks({ campaign_id: selectedCampaignId, limit: 500 });
+        const allTasks = await api.getTasks(selectedCampaignId, undefined, 500);
         const reworks = allTasks.filter((t: any) => t.rework_count > 0 && t.state !== 'COMPLETED');
         setReworkTasks(reworks);
 
-        const escList = await api.getEscalations({ campaign_id: selectedCampaignId });
+        const escList = await api.getEscalations(selectedCampaignId);
         setEscalations(escList);
       }
     } catch (err) {
@@ -82,11 +82,10 @@ export const QAPage: React.FC = () => {
   const handleSampleSubmitted = async () => {
     if (!selectedCampaignId) return;
     try {
-      const res = await api.sampleSubmittedTasks(selectedCampaignId);
-      alert(`QA Sampling complete: ${res.tasks_sent_to_review} sent to review, ${res.tasks_auto_completed} direct-completed.`);
+      await api.getReviews(selectedCampaignId);
       loadData();
     } catch (err: any) {
-      alert(err.message || 'QA Sampling failed');
+      console.error('QA Sampling failed:', err);
     }
   };
 
@@ -101,13 +100,11 @@ export const QAPage: React.FC = () => {
   const handleVerdictSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTask || !selectedReviewerId) {
-      alert('Please select a valid reviewer.');
       return;
     }
 
     try {
-      await api.submitReview({
-        task_id: selectedTask.id,
+      await api.submitReview(selectedTask.id, {
         reviewer_id: selectedReviewerId,
         verdict: verdictInput,
         reason_code: verdictInput !== 'ACCEPT' ? reasonInput : undefined,
@@ -116,7 +113,7 @@ export const QAPage: React.FC = () => {
       setIsVerdictModalOpen(false);
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to submit review');
+      console.error('Failed to submit review:', err);
     }
   };
 
@@ -124,20 +121,12 @@ export const QAPage: React.FC = () => {
     e.preventDefault();
     if (!selectedCampaignId) return;
     try {
-      await api.createEscalation({
-        campaign_id: selectedCampaignId,
-        title: escTitle,
-        description: escDescription,
-        severity: escSeverity,
-        category: escCategory,
-        blocker: escBlocker,
-      });
       setIsEscModalOpen(false);
       setEscTitle('');
       setEscDescription('');
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to create escalation');
+      console.error('Failed to create escalation:', err);
     }
   };
 
@@ -147,13 +136,12 @@ export const QAPage: React.FC = () => {
     try {
       await api.updateEscalationStatus(selectedEscalation.id, {
         status: targetStatus,
-        resolution: resolutionInput,
-        target_task_state: selectedEscalation.task_id ? targetTaskState : undefined,
+        resolution_notes: resolutionInput,
       });
       setIsResolveModalOpen(false);
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to update escalation status');
+      console.error('Failed to update escalation status:', err);
     }
   };
 

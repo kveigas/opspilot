@@ -17,20 +17,19 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefre
       await api.advanceDemoWorkday();
       if (onRefresh) onRefresh();
     } catch (err: any) {
-      alert(err.message || 'Failed to advance demo workday');
+      console.error('Failed to advance demo workday:', err);
     } finally {
       setIsAdvancing(false);
     }
   };
 
   const handleResetDemo = async () => {
-    if (!confirm('Reset demo scenario to initial deterministic baseline state?')) return;
     setIsResetting(true);
     try {
       await api.resetDemo();
       if (onRefresh) onRefresh();
     } catch (err: any) {
-      alert(err.message || 'Failed to reset demo');
+      console.error('Failed to reset demo:', err);
     } finally {
       setIsResetting(false);
     }

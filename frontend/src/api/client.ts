@@ -4,21 +4,86 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL
   ? `${import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '')}/api/v1`
   : '/api/v1';
 
-export async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
-  });
+export type ErrorType = 'NETWORK_UNAVAILABLE' | 'API_TIMEOUT' | 'API_ERROR' | 'CORS_OR_CONFIGURATION';
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(errorData.detail || `Request failed with status ${res.status}`);
+export class ApiError extends Error {
+  type: ErrorType;
+  status?: number;
+
+  constructor(message: string, type: ErrorType, status?: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.type = type;
+    this.status = status;
+  }
+}
+
+export async function fetchApi<T>(
+  endpoint: string,
+  options?: RequestInit & { timeoutMs?: number; retries?: number }
+): Promise<T> {
+  const timeoutMs = options?.timeoutMs ?? (endpoint.includes('bootstrap') ? 45000 : 30000);
+  const maxRetries = options?.retries ?? (options?.method && options.method !== 'GET' && !endpoint.includes('bootstrap') ? 0 : 3);
+
+  let attempt = 0;
+
+  while (attempt <= maxRetries) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(`${BASE_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+        ...options,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+        const errType: ErrorType = res.status >= 500 ? 'API_ERROR' : 'API_ERROR';
+        throw new ApiError(errorData.detail || `Request failed with status ${res.status}`, errType, res.status);
+      }
+
+      return await res.json();
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+
+      const isAbort = err.name === 'AbortError';
+      const isTypeError = err instanceof TypeError || err.message?.includes('Failed to fetch');
+
+      let classifiedType: ErrorType = 'API_ERROR';
+      let message = err.message || 'An error occurred during request';
+
+      if (isAbort) {
+        classifiedType = 'API_TIMEOUT';
+        message = `Request timed out after ${Math.round(timeoutMs / 1000)} seconds.`;
+      } else if (isTypeError) {
+        classifiedType = 'NETWORK_UNAVAILABLE';
+        message = 'Unable to connect to the OpsPilot API backend.';
+      } else if (err instanceof ApiError) {
+        classifiedType = err.type;
+      }
+
+      const isRetryable = classifiedType === 'NETWORK_UNAVAILABLE' || classifiedType === 'API_TIMEOUT' || (err.status && err.status >= 500);
+
+      if (attempt < maxRetries && isRetryable) {
+        attempt++;
+        const backoffMs = attempt * 2000;
+        console.warn(`[OpsPilot API] Attempt ${attempt} failed (${message}). Retrying in ${backoffMs / 1000}s...`);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        continue;
+      }
+
+      throw new ApiError(message, classifiedType, err.status);
+    }
   }
 
-  return res.json();
+  throw new ApiError('Maximum retry attempts exceeded.', 'NETWORK_UNAVAILABLE');
 }
 
 export const api = {
@@ -101,98 +166,74 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  getTasks: (params?: { campaign_id?: string; state?: string; worker_id?: string; limit?: number; offset?: number }) => {
-    const query = new URLSearchParams();
-    if (params?.campaign_id) query.append('campaign_id', params.campaign_id);
-    if (params?.state) query.append('state', params.state);
-    if (params?.worker_id) query.append('worker_id', params.worker_id);
-    if (params?.limit) query.append('limit', params.limit.toString());
-    if (params?.offset) query.append('offset', params.offset.toString());
-    const queryString = query.toString();
-    return fetchApi<any[]>(`/tasks${queryString ? `?${queryString}` : ''}`);
+  getTasks: (campaignId: string, state?: string, limit?: number) => {
+    const params = new URLSearchParams();
+    params.append('campaign_id', campaignId);
+    if (state) params.append('state', state);
+    if (limit) params.append('limit', limit.toString());
+    return fetchApi<any[]>(`/tasks?${params.toString()}`);
   },
   getTask: (taskId: string) => fetchApi<any>(`/tasks/${taskId}`),
-  updateTaskState: (taskId: string, state: string, reason?: string) =>
-    fetchApi<any>(`/tasks/${taskId}/state`, {
-      method: 'PATCH',
-      body: JSON.stringify({ state, reason }),
+  transitionTaskState: (taskId: string, targetState: string, reason?: string) =>
+    fetchApi<any>(`/tasks/${taskId}/transition`, {
+      method: 'POST',
+      body: JSON.stringify({ target_state: targetState, reason }),
     }),
-  getCampaignExecution: (campaignId: string) => fetchApi<any>(`/campaigns/${campaignId}/execution`),
 
-  // Allocations
-  triggerAllocation: (data: { campaign_id: string; operational_date: string; max_tasks_to_allocate?: number }) =>
+  // Allocations Engine
+  getCampaignAllocations: (campaignId: string, date?: string) =>
+    fetchApi<any[]>(`/campaigns/${campaignId}/allocations${date ? `?date=${date}` : ''}`),
+  triggerAllocationRun: (data: { campaign_id: string; operational_date: string; max_tasks?: number }) =>
     fetchApi<any>('/allocations/trigger', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  getAllocations: (params?: { campaign_id?: string; worker_id?: string; status?: string }) => {
-    const query = new URLSearchParams();
-    if (params?.campaign_id) query.append('campaign_id', params.campaign_id);
-    if (params?.worker_id) query.append('worker_id', params.worker_id);
-    if (params?.status) query.append('status', params.status);
-    const queryString = query.toString();
-    return fetchApi<any[]>(`/allocations${queryString ? `?${queryString}` : ''}`);
-  },
-  releaseAllocation: (allocationId: string, reason: string = 'MANUAL_RELEASE') =>
-    fetchApi<any>(`/allocations/${allocationId}/release?reason=${encodeURIComponent(reason)}`, {
-      method: 'POST',
-    }),
 
-  // Phase 3: QA & Reviews
-  getReviews: (params?: { campaign_id?: string; task_id?: string; reviewer_id?: string }) => {
-    const query = new URLSearchParams();
-    if (params?.campaign_id) query.append('campaign_id', params.campaign_id);
-    if (params?.task_id) query.append('task_id', params.task_id);
-    if (params?.reviewer_id) query.append('reviewer_id', params.reviewer_id);
-    const queryString = query.toString();
-    return fetchApi<any[]>(`/reviews${queryString ? `?${queryString}` : ''}`);
+  // QA & Reviews
+  getReviews: (campaignId?: string, taskId?: string) => {
+    const params = new URLSearchParams();
+    if (campaignId) params.append('campaign_id', campaignId);
+    if (taskId) params.append('task_id', taskId);
+    return fetchApi<any[]>(`/reviews?${params.toString()}`);
   },
-  submitReview: (data: { task_id: string; reviewer_id: string; verdict: string; reason_code?: string; comment?: string }) =>
-    fetchApi<any>('/reviews', {
+  submitReview: (taskId: string, data: { reviewer_id: string; verdict: string; reason_code?: string; comment?: string }) =>
+    fetchApi<any>(`/reviews/tasks/${taskId}/verdict`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  sampleSubmittedTasks: (campaignId: string) =>
-    fetchApi<any>(`/campaigns/${campaignId}/reviews/sample`, {
-      method: 'POST',
-    }),
 
-  // Phase 3: Escalations
-  getEscalations: (params?: { campaign_id?: string; status?: string; severity?: string }) => {
-    const query = new URLSearchParams();
-    if (params?.campaign_id) query.append('campaign_id', params.campaign_id);
-    if (params?.status) query.append('status', params.status);
-    if (params?.severity) query.append('severity', params.severity);
-    const queryString = query.toString();
-    return fetchApi<any[]>(`/escalations${queryString ? `?${queryString}` : ''}`);
+  // Escalations
+  getEscalations: (campaignId?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (campaignId) params.append('campaign_id', campaignId);
+    if (status) params.append('status', status);
+    return fetchApi<any[]>(`/escalations?${params.toString()}`);
   },
-  createEscalation: (data: { campaign_id: string; task_id?: string; owner_id?: string; title: string; description: string; severity?: string; category?: string; blocker?: boolean; due_at?: string }) =>
-    fetchApi<any>('/escalations', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  updateEscalationStatus: (escalationId: string, data: { status: string; owner_id?: string; resolution?: string; target_task_state?: string }) =>
+  updateEscalationStatus: (escalationId: string, data: { status: string; resolution_notes?: string }) =>
     fetchApi<any>(`/escalations/${escalationId}/status`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
 
-  // Phase 3: SLA Engine
-  getCampaignSLA: (campaignId: string, date?: string) =>
-    fetchApi<any>(`/campaigns/${campaignId}/sla${date ? `?date=${date}` : ''}`),
+  // SLA Engine
+  getCampaignSLA: (campaignId: string) => fetchApi<any>(`/campaigns/${campaignId}/sla`),
+  getCampaignExecution: (campaignId: string) => fetchApi<any>(`/campaigns/${campaignId}/sla`),
 
-  // Phase 3: Delivery Readiness Engine
-  getDeliveryReadiness: (campaignId: string) =>
-    fetchApi<any>(`/campaigns/${campaignId}/delivery-readiness`),
+  // Delivery Readiness
+  getDeliveryReadiness: (campaignId: string) => fetchApi<any>(`/campaigns/${campaignId}/delivery-readiness`),
 
-  // Phase 3: Today Manager Cockpit
-  getTodayCockpit: () => fetchApi<any>('/today'),
+  // Today Cockpit
+  getTodayCockpit: () => fetchApi<any>('/today/cockpit'),
 
-  // Phase 4: Public Demo API
-  bootstrapDemo: (reset: boolean = false) =>
-    fetchApi<any>(`/demo/bootstrap${reset ? '?reset=true' : ''}`, { method: 'POST' }),
+  // Flagship Recruiter Demo Bootstrap
+  bootstrapDemo: (reset: boolean = true) =>
+    fetchApi<any>(`/demo/bootstrap?reset=${reset}`, {
+      method: 'POST',
+    }),
   advanceDemoWorkday: (campaignId?: string) =>
-    fetchApi<any>(`/demo/advance-workday${campaignId ? `?campaign_id=${campaignId}` : ''}`, { method: 'POST' }),
+    fetchApi<any>(`/demo/advance-workday${campaignId ? `?campaign_id=${campaignId}` : ''}`, {
+      method: 'POST',
+    }),
   resetDemo: () => fetchApi<any>('/demo/reset', { method: 'POST' }),
   getDemoProvenance: () => fetchApi<any>('/demo/provenance'),
 };
