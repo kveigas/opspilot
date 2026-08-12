@@ -82,8 +82,8 @@ export const QAPage: React.FC = () => {
   const handleSampleSubmitted = async () => {
     if (!selectedCampaignId) return;
     try {
-      await api.getReviews(selectedCampaignId);
-      loadData();
+      await api.sampleSubmittedTasks(selectedCampaignId);
+      await loadData();
     } catch (err: any) {
       console.error('QA Sampling failed:', err);
     }

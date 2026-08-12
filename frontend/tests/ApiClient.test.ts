@@ -21,4 +21,19 @@ describe('execution API client', () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
+
+  it('samples submitted tasks through the sampling endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ tasks_sent_to_review: 30 }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.sampleSubmittedTasks('demo-campaign-ai-eval');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/campaigns/demo-campaign-ai-eval/reviews/sample',
+      expect.objectContaining({ method: 'POST', signal: expect.any(AbortSignal) }),
+    );
+  });
 });
