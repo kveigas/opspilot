@@ -61,8 +61,11 @@ export const QAPage: React.FC = () => {
         const revHistory = await api.getReviews(selectedCampaignId);
         setReviewsList(revHistory);
 
-        const inProgressTasks = await api.getTasks(selectedCampaignId, 'IN_PROGRESS', 1000);
-        const reworks = inProgressTasks.filter((t: any) => t.rework_count > 0);
+        const [inProgressTasks, assignedTasks] = await Promise.all([
+          api.getTasks(selectedCampaignId, 'IN_PROGRESS', 1000),
+          api.getTasks(selectedCampaignId, 'ASSIGNED', 1000),
+        ]);
+        const reworks = [...inProgressTasks, ...assignedTasks].filter((t: any) => t.rework_count > 0);
         setReworkTasks(reworks);
 
         const escList = await api.getEscalations(selectedCampaignId);
