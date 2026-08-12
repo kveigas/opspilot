@@ -227,7 +227,13 @@ def process_review_sampling_for_submitted_tasks(db: Session, campaign_id: str) -
     total_submitted = len(submitted_tasks)
     sampling_pct = float(campaign.review_sampling_pct)
 
-    num_to_review = math.ceil(total_submitted * (sampling_pct / 100.0))
+    batch_num = math.ceil(total_submitted * (sampling_pct / 100.0))
+    required_reviews = math.ceil(int(campaign.total_volume) * (sampling_pct / 100.0))
+    existing_reviews = db.query(Review).filter(Review.campaign_id == campaign_id).count()
+    existing_in_review = db.query(Task).filter(Task.campaign_id == campaign_id, Task.state == "IN_REVIEW").count()
+    needed_reviews = max(0, required_reviews - (existing_reviews + existing_in_review))
+
+    num_to_review = min(total_submitted, max(batch_num, needed_reviews)) if (existing_reviews + existing_in_review > 0) else batch_num
 
     tasks_sent_to_review = 0
     tasks_auto_completed = 0

@@ -158,7 +158,7 @@ def _create_fresh_demo_scenario(db: Session) -> dict:
                     attempts_used=1,
                     qualified_at=now_utc,
                 ))
-            elif w.role == "ANNOTATOR":
+            elif w.role in ["ANNOTATOR", "REVIEWER"]:
                 db.add(WorkerQualification(
                     worker_id=w.id,
                     campaign_id=camp.id,
@@ -304,11 +304,40 @@ def advance_demo_workday(db: Session, campaign_id: str = DEMO_CAMPAIGN_ID) -> di
 
     cid = camp.id
 
+    # 0. Unblock BLOCKED tasks if no open critical escalations exist
+    open_critical = (
+        db.query(Escalation)
+        .filter(
+            Escalation.campaign_id == cid,
+            Escalation.severity == "CRITICAL",
+            Escalation.status.in_(["OPEN", "INVESTIGATING", "WAITING"]),
+        )
+        .count()
+    )
+    if open_critical == 0:
+        blocked_tasks = db.query(Task).filter(Task.campaign_id == cid, Task.state == "BLOCKED").limit(200).all()
+        for t in blocked_tasks:
+            transition_task_state(db, t, "IN_PROGRESS", reason="Escalation Resolved - Unblocked")
+
+        escalated_tasks = db.query(Task).filter(Task.campaign_id == cid, Task.state == "ESCALATED").limit(200).all()
+        for t in escalated_tasks:
+            transition_task_state(db, t, "IN_PROGRESS", reason="Escalation Resolved - Restored to Production")
+
+    # 0b. Advance ASSIGNED tasks to IN_PROGRESS
+    assigned_tasks = (
+        db.query(Task)
+        .filter(Task.campaign_id == cid, Task.state == "ASSIGNED")
+        .limit(400)
+        .all()
+    )
+    for t in assigned_tasks:
+        transition_task_state(db, t, "IN_PROGRESS", reason="Demo Workday Production Start")
+
     # 1. Advance IN_PROGRESS tasks to SUBMITTED
     in_progress_tasks = (
         db.query(Task)
         .filter(Task.campaign_id == cid, Task.state == "IN_PROGRESS")
-        .limit(100)
+        .limit(400)
         .all()
     )
     advanced_to_submitted = 0
@@ -323,18 +352,27 @@ def advance_demo_workday(db: Session, campaign_id: str = DEMO_CAMPAIGN_ID) -> di
     in_review_tasks = (
         db.query(Task)
         .filter(Task.campaign_id == cid, Task.state == "IN_REVIEW")
-        .limit(50)
+        .limit(200)
         .all()
     )
-    reviewer = db.query(Worker).filter(Worker.role == "REVIEWER", Worker.is_active == True).first()
+    qual_revs = (
+        db.query(WorkerQualification)
+        .filter(
+            WorkerQualification.campaign_id == cid,
+            WorkerQualification.status == "PASSED",
+        )
+        .all()
+    )
+    qual_worker_ids = [q.worker_id for q in qual_revs]
+    reviewer = db.query(Worker).filter(Worker.id.in_(qual_worker_ids), Worker.role == "REVIEWER").first()
 
     accepted_count = 0
     rework_count = 0
 
     if reviewer:
         for idx, t in enumerate(in_review_tasks):
-            verdict = "ACCEPT" if idx % 5 != 0 else "REWORK"
-            reason = None if verdict == "ACCEPT" else "GUIDELINE_AMBIGUITY"
+            verdict = "ACCEPT"
+            reason = None
 
             try:
                 submit_review(db, data=ReviewCreate(
