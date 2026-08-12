@@ -217,7 +217,7 @@ export const api = {
 
   // SLA Engine
   getCampaignSLA: (campaignId: string) => fetchApi<any>(`/campaigns/${campaignId}/sla`),
-  getCampaignExecution: (campaignId: string) => fetchApi<any>(`/campaigns/${campaignId}/sla`),
+  getCampaignExecution: (campaignId: string) => fetchApi<any>(`/campaigns/${campaignId}/execution`),
 
   // Delivery Readiness
   getDeliveryReadiness: (campaignId: string) => fetchApi<any>(`/campaigns/${campaignId}/delivery-readiness`),
