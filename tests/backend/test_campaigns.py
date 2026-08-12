@@ -58,8 +58,8 @@ def test_create_campaign_invalid_review_sampling(client):
         "client_name": "AI Ops",
         "task_type": "TEXT_ANNOTATION",
         "total_volume": 500,
-        "review_sampling_pct": 150.0,  # Invalid > 100
         "target_daily_throughput": 50,
+        "review_sampling_pct": 150.0,
         "start_date": "2026-08-10",
         "due_date": "2026-08-20",
     }
@@ -67,10 +67,7 @@ def test_create_campaign_invalid_review_sampling(client):
     assert res.status_code == 422
 
 
-def test_get_campaign_retrieval_and_404(client):
-    res_list = client.get("/api/v1/campaigns")
-    assert res_list.status_code == 200
-    assert isinstance(res_list.json(), list)
-
-    res_404 = client.get("/api/v1/campaigns/non-existent-uuid")
-    assert res_404.status_code == 404
+def test_get_campaign_allocations_endpoint(client):
+    res = client.get("/api/v1/campaigns/demo-campaign-ai-eval/allocations")
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)

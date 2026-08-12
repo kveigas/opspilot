@@ -181,8 +181,8 @@ export const api = {
     }),
 
   // Allocations Engine
-  getCampaignAllocations: (campaignId: string, date?: string) =>
-    fetchApi<any[]>(`/campaigns/${campaignId}/allocations${date ? `?date=${date}` : ''}`),
+  getCampaignAllocations: (campaignId: string) =>
+    fetchApi<any[]>(`/allocations?campaign_id=${campaignId}`),
   triggerAllocationRun: (data: { campaign_id: string; operational_date: string; max_tasks?: number }) =>
     fetchApi<any>('/allocations/trigger', {
       method: 'POST',

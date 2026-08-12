@@ -113,3 +113,25 @@ def api_update_campaign(campaign_id: str, data: CampaignUpdate, db: Session = De
         updated_at=campaign.updated_at,
         required_skills=[s.skill_tag for s in campaign.skills],
     )
+
+
+@router.get("/{campaign_id}/allocations")
+def api_get_campaign_allocations(campaign_id: str, db: Session = Depends(get_db)):
+    from app.models.allocation import Allocation
+    from app.schemas.allocation import AllocationResponse
+    allocs = list(db.query(Allocation).filter(Allocation.campaign_id == campaign_id).order_by(Allocation.allocated_at.desc()).all())
+    return [
+        AllocationResponse(
+            id=a.id,
+            allocation_run_id=a.allocation_run_id,
+            campaign_id=a.campaign_id,
+            task_id=a.task_id,
+            worker_id=a.worker_id,
+            operational_date=a.operational_date,
+            allocated_at=a.allocated_at,
+            deallocated_at=a.deallocated_at,
+            status=a.status,
+            reason=a.reason,
+        )
+        for a in allocs
+    ]
