@@ -12,6 +12,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isBootstrapping, setIsBootstrapping] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -35,13 +36,13 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
           return;
         } catch (bootstrapErr: any) {
           console.error('Failed to auto-bootstrap demo:', bootstrapErr);
-          setErrorMsg(bootstrapErr.message || 'Unable to connect to OpsPilot API backend.');
+          setErrorMsg('Unable to connect to the OpsPilot demo right now. Please retry.');
         } finally {
           setIsBootstrapping(false);
         }
       } else {
         console.error('Failed to load Today cockpit data', err);
-        setErrorMsg(err.message || 'Unable to connect to OpsPilot API backend.');
+        setErrorMsg('Unable to load the manager cockpit right now. Please retry.');
       }
     } finally {
       setIsLoading(false);
@@ -54,9 +55,10 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
     try {
       await api.bootstrapDemo(true);
       await loadData();
+      setActionFeedback({ kind: 'success', message: 'Public demo scenario loaded.' });
     } catch (err: any) {
       console.error('Failed to bootstrap demo scenario', err);
-      setErrorMsg(err.message || 'Unable to connect to OpsPilot API backend.');
+      setErrorMsg('Unable to connect to the OpsPilot demo right now. Please retry.');
     } finally {
       setIsBootstrapping(false);
     }
@@ -65,6 +67,18 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleAdvanceWorkday = async () => {
+    setActionFeedback(null);
+    try {
+      await api.advanceDemoWorkday();
+      await loadData();
+      setActionFeedback({ kind: 'success', message: 'Workday advanced and cockpit signals refreshed.' });
+    } catch (err: any) {
+      console.error('Failed to advance demo workday from Today:', err);
+      setActionFeedback({ kind: 'error', message: 'Unable to advance the demo right now. Please retry.' });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -115,7 +129,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
             <span className="block font-bold text-cyan-400">4. Run Allocation</span>
             <span className="text-[10px] text-slate-400">Distribute Backlog</span>
           </button>
-          <button onClick={() => api.advanceDemoWorkday().then(loadData)} className="p-2 rounded bg-slate-950/60 border border-slate-800 hover:border-slate-700 text-slate-300">
+          <button onClick={handleAdvanceWorkday} className="p-2 rounded bg-slate-950/60 border border-slate-800 hover:border-slate-700 text-slate-300">
             <span className="block font-bold text-emerald-400">5. Advance Workday</span>
             <span className="text-[10px] text-slate-400">Execute Workflow</span>
           </button>
@@ -145,6 +159,20 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
               {isBootstrapping ? 'Retrying Demo Connection...' : '🔄 Retry Demo Connection'}
             </button>
           </div>
+        </div>
+      )}
+
+      {actionFeedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-lg border px-4 py-3 text-sm ${
+            actionFeedback.kind === 'success'
+              ? 'bg-emerald-950/40 border-emerald-800 text-emerald-200'
+              : 'bg-rose-950/40 border-rose-800 text-rose-200'
+          }`}
+        >
+          {actionFeedback.message}
         </div>
       )}
 
@@ -179,8 +207,16 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
                         <StatusBadge status={c.sla_status} type="sla" />
                       </div>
                       <p className="text-slate-400 text-[11px] font-mono">ID: {c.campaign_id}</p>
-                      {c.primary_reason_code && (
-                        <p className="text-rose-300 font-semibold">Reason: {c.primary_reason_code}</p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-300">
+                        <span>Delivery: <strong>{c.delivery_status}</strong></span>
+                        <span>Capacity: <strong>{c.available_capacity}</strong> ({c.capacity_ratio}×)</span>
+                        <span>Blocked: <strong>{c.blocked_count}</strong></span>
+                        <span>Unallocated: <strong>{c.unallocated_count}</strong></span>
+                        <span>Review backlog: <strong>{c.review_backlog_count}</strong></span>
+                        <span>Rework: <strong>{c.rework_count}</strong></span>
+                      </div>
+                      {(c.reason_codes || []).length > 0 && (
+                        <p className="text-rose-300 font-semibold break-words">Reasons: {c.reason_codes.join(', ')}</p>
                       )}
                     </div>
                   ))}
@@ -211,8 +247,11 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
                         <StatusBadge status={c.sla_status} type="sla" />
                       </div>
                       <p className="text-slate-400 text-[11px] font-mono">ID: {c.campaign_id}</p>
-                      {c.primary_reason_code && (
-                        <p className="text-amber-300 font-semibold">Reason: {c.primary_reason_code}</p>
+                      <p className="text-slate-300 text-[11px]">
+                        Delivery: <strong>{c.delivery_status}</strong> · Capacity: <strong>{c.available_capacity}</strong> ({c.capacity_ratio}×)
+                      </p>
+                      {(c.reason_codes || []).length > 0 && (
+                        <p className="text-amber-300 font-semibold break-words">Reasons: {c.reason_codes.join(', ')}</p>
                       )}
                     </div>
                   ))}
@@ -232,7 +271,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
                 </span>
               </div>
               {(cockpit.open_escalations || []).length === 0 ? (
-                <p className="text-xs text-slate-500">Zero open escalations requiring intervention.</p>
+                <p className="text-xs text-slate-400">Zero open escalations requiring intervention.</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {(cockpit.open_escalations || []).map((e: any) => (
@@ -262,7 +301,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
                 </span>
               </div>
               {(cockpit.unallocated_backlog_summary || []).length === 0 ? (
-                <p className="text-xs text-slate-500">Zero unallocated task backlogs.</p>
+                <p className="text-xs text-slate-400">Zero unallocated task backlogs.</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {(cockpit.unallocated_backlog_summary || []).map((b: any) => (
@@ -291,14 +330,14 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
                 </span>
               </div>
               {(cockpit.qa_review_backlog_summary || []).length === 0 ? (
-                <p className="text-xs text-slate-500">Zero QA review backlogs.</p>
+                <p className="text-xs text-slate-400">Zero QA review backlogs.</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {(cockpit.qa_review_backlog_summary || []).map((q: any) => (
                     <div key={q.campaign_id} className="bg-slate-950 border border-slate-800 rounded p-2 text-xs flex items-center justify-between">
                       <div>
                         <span className="font-semibold text-slate-200 block truncate">{q.campaign_name}</span>
-                        <span className="text-[11px] text-blue-400">{q.in_review_count} In Review</span>
+                        <span className="text-[11px] text-blue-400">{q.review_backlog_count} Awaiting QA</span>
                       </div>
                       {onNavigate && (
                         <button onClick={() => onNavigate('qa')} className="text-[11px] text-emerald-400 hover:underline">
@@ -316,11 +355,11 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
           <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-5 space-y-3">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Recent Operational Audit Events</h3>
             {auditLogs.length === 0 ? (
-              <p className="text-xs text-slate-500">Zero recent audit events.</p>
+              <p className="text-xs text-slate-400">Zero recent audit events.</p>
             ) : (
               <div className="space-y-2">
                 {auditLogs.map((log) => (
-                  <div key={log.id} className="bg-slate-950 border border-slate-800/80 rounded p-2.5 text-xs flex items-start justify-between gap-4">
+                  <div key={log.id} className="bg-slate-950 border border-slate-800/80 rounded p-2.5 text-xs flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 min-w-0">
                     <div className="space-y-0.5">
                       <div className="flex items-center space-x-2">
                         <span className="font-mono font-bold text-emerald-400 text-[11px]">{log.action}</span>
@@ -329,7 +368,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
                       </div>
                       <p className="text-slate-400 text-[11px]">{log.summary}</p>
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono shrink-0">
+                    <span className="text-[10px] text-slate-500 font-mono sm:shrink-0 self-end sm:self-auto">
                       {new Date(log.created_at).toLocaleTimeString()}
                     </span>
                   </div>

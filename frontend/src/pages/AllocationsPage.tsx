@@ -11,6 +11,8 @@ export const AllocationsPage: React.FC = () => {
   const [unassignedTaskCount, setUnassignedTaskCount] = useState<number>(0);
   const [lastRun, setLastRun] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isActionPending, setIsActionPending] = useState<boolean>(false);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   // Modal State for Task Creation
   const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
@@ -45,15 +47,21 @@ export const AllocationsPage: React.FC = () => {
 
   const handleTriggerAllocation = async () => {
     if (!selectedCampaignId) return;
+    setIsActionPending(true);
+    setFeedback(null);
     try {
       const run = await api.triggerAllocationRun({
         campaign_id: selectedCampaignId,
         operational_date: operationalDate,
       });
       setLastRun(run);
-      loadData();
+      await loadData();
+      setFeedback({ kind: 'success', message: `${run.tasks_allocated} tasks allocated and records refreshed.` });
     } catch (err: any) {
       console.error('Allocation run failed:', err);
+      setFeedback({ kind: 'error', message: 'Unable to run allocation right now. Please retry.' });
+    } finally {
+      setIsActionPending(false);
     }
   };
 
@@ -97,13 +105,27 @@ export const AllocationsPage: React.FC = () => {
           </button>
           <button
             onClick={handleTriggerAllocation}
-            disabled={!selectedCampaignId || unassignedTaskCount === 0}
+            disabled={!selectedCampaignId || unassignedTaskCount === 0 || isActionPending}
             className="px-4 py-2 text-xs font-bold rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-sm transition"
           >
             ⚡ Trigger Allocation Run
           </button>
         </div>
       </div>
+
+      {feedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-md border px-4 py-3 text-sm ${
+            feedback.kind === 'success'
+              ? 'bg-emerald-950/40 border-emerald-800 text-emerald-200'
+              : 'bg-rose-950/40 border-rose-800 text-rose-200'
+          }`}
+        >
+          {feedback.message}
+        </div>
+      )}
 
       {/* Controls Bar */}
       <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">

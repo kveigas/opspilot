@@ -79,4 +79,27 @@ describe('execution API client', () => {
       expect.objectContaining({ method: 'POST', signal: expect.any(AbortSignal) }),
     );
   });
+
+  it('creates a manual escalation through the escalation API', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'esc-1', status: 'OPEN' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const payload = {
+      campaign_id: 'campaign-1',
+      title: 'Guideline clarification required',
+      description: 'The manager needs an authoritative clarification.',
+      severity: 'HIGH',
+      category: 'GUIDELINE',
+      blocker: true,
+    };
+    await api.createEscalation(payload);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/escalations',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify(payload) }),
+    );
+  });
 });

@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Phase 4 Flagship Recruiter Demo Flow', () => {
   test('Complete 2-3 Minute Recruiter Evaluation Journey', async ({ page }) => {
+    test.setTimeout(90000);
+
     // Step 1: Open Application
     await page.goto('/');
 
@@ -47,6 +49,9 @@ test.describe('Phase 4 Flagship Recruiter Demo Flow', () => {
 
     // Step 7: Advance Demo Workday via Header CTA
     await page.getByRole('button', { name: '⚡ Advance Workday' }).first().click();
+    await expect(page.getByText('Workday advanced and the current view was refreshed.')).toBeVisible({
+      timeout: 60000,
+    });
 
     // Step 8: Inspect Delivery Readiness
     await page.getByRole('button', { name: 'Delivery', exact: true }).click();

@@ -15,6 +15,8 @@ export const QAPage: React.FC = () => {
   const [reworkTasks, setReworkTasks] = useState<any[]>([]);
   const [escalations, setEscalations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isActionPending, setIsActionPending] = useState<boolean>(false);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   // Review Verdict Modal State
   const [isVerdictModalOpen, setIsVerdictModalOpen] = useState<boolean>(false);
@@ -84,11 +86,17 @@ export const QAPage: React.FC = () => {
 
   const handleSampleSubmitted = async () => {
     if (!selectedCampaignId) return;
+    setIsActionPending(true);
+    setFeedback(null);
     try {
       await api.sampleSubmittedTasks(selectedCampaignId);
       await loadData();
+      setFeedback({ kind: 'success', message: 'Submitted tasks sampled and the review queue refreshed.' });
     } catch (err: any) {
       console.error('QA Sampling failed:', err);
+      setFeedback({ kind: 'error', message: 'Unable to sample submitted tasks right now. Please retry.' });
+    } finally {
+      setIsActionPending(false);
     }
   };
 
@@ -106,6 +114,8 @@ export const QAPage: React.FC = () => {
       return;
     }
 
+    setIsActionPending(true);
+    setFeedback(null);
     try {
       await api.submitReview(selectedTask.id, {
         reviewer_id: selectedReviewerId,
@@ -114,37 +124,63 @@ export const QAPage: React.FC = () => {
         comment: commentInput,
       });
       setIsVerdictModalOpen(false);
-      loadData();
+      await loadData();
+      setFeedback({ kind: 'success', message: `${verdictInput} review recorded and queues refreshed.` });
     } catch (err: any) {
       console.error('Failed to submit review:', err);
+      setFeedback({ kind: 'error', message: 'Unable to record the review right now. Please retry.' });
+    } finally {
+      setIsActionPending(false);
     }
   };
 
   const handleCreateEscalation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCampaignId) return;
+    setIsActionPending(true);
+    setFeedback(null);
     try {
+      await api.createEscalation({
+        campaign_id: selectedCampaignId,
+        title: escTitle,
+        description: escDescription,
+        severity: escSeverity,
+        category: escCategory,
+        blocker: escBlocker,
+      });
       setIsEscModalOpen(false);
       setEscTitle('');
       setEscDescription('');
-      loadData();
+      await loadData();
+      setSubTab('escalations');
+      setFeedback({ kind: 'success', message: 'Escalation created and added to the operational queue.' });
     } catch (err: any) {
       console.error('Failed to create escalation:', err);
+      setFeedback({ kind: 'error', message: 'Unable to create the escalation right now. Please retry.' });
+    } finally {
+      setIsActionPending(false);
     }
   };
 
   const handleResolveEscalation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEscalation) return;
+    setIsActionPending(true);
+    setFeedback(null);
     try {
       await api.updateEscalationStatus(selectedEscalation.id, {
         status: targetStatus,
-        resolution_notes: resolutionInput,
+        resolution: resolutionInput,
+        target_task_state: selectedEscalation.task_id ? targetTaskState : undefined,
       });
       setIsResolveModalOpen(false);
-      loadData();
+      await loadData();
+      setFeedback({ kind: 'success', message: 'Escalation status updated and queues refreshed.' });
     } catch (err: any) {
       console.error('Failed to update escalation status:', err);
+      setFeedback({ kind: 'error', message: 'Unable to update the escalation right now. Please retry.' });
+    } finally {
+      setIsActionPending(false);
     }
   };
 
@@ -161,19 +197,34 @@ export const QAPage: React.FC = () => {
         <div className="flex items-center space-x-3">
           <button
             onClick={handleSampleSubmitted}
-            disabled={!selectedCampaignId}
+            disabled={!selectedCampaignId || isActionPending}
             className="px-3 py-2 text-xs font-semibold rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
           >
             🎲 Sample Submitted Tasks
           </button>
           <button
             onClick={() => setIsEscModalOpen(true)}
+            disabled={isActionPending}
             className="px-4 py-2 text-xs font-bold rounded-md bg-rose-700 hover:bg-rose-600 text-white shadow-sm transition"
           >
             + Create Escalation
           </button>
         </div>
       </div>
+
+      {feedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-md border px-4 py-3 text-sm ${
+            feedback.kind === 'success'
+              ? 'bg-emerald-950/40 border-emerald-800 text-emerald-200'
+              : 'bg-rose-950/40 border-rose-800 text-rose-200'
+          }`}
+        >
+          {feedback.message}
+        </div>
+      )}
 
       {/* Controls Bar */}
       <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -525,6 +576,7 @@ export const QAPage: React.FC = () => {
             </button>
             <button
               type="submit"
+              disabled={isActionPending}
               className="px-4 py-1.5 text-xs font-semibold rounded bg-emerald-700 text-white hover:bg-emerald-600"
             >
               Submit Verdict
@@ -614,7 +666,7 @@ export const QAPage: React.FC = () => {
             <button type="button" onClick={() => setIsEscModalOpen(false)} className="px-3 py-1.5 text-xs bg-slate-800 text-slate-300 rounded">
               Cancel
             </button>
-            <button type="submit" className="px-4 py-1.5 text-xs font-bold bg-rose-700 hover:bg-rose-600 text-white rounded">
+            <button type="submit" disabled={isActionPending} className="px-4 py-1.5 text-xs font-bold bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white rounded">
               Create Escalation
             </button>
           </div>
@@ -674,7 +726,7 @@ export const QAPage: React.FC = () => {
             <button type="button" onClick={() => setIsResolveModalOpen(false)} className="px-3 py-1.5 text-xs bg-slate-800 text-slate-300 rounded">
               Cancel
             </button>
-            <button type="submit" className="px-4 py-1.5 text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white rounded">
+            <button type="submit" disabled={isActionPending} className="px-4 py-1.5 text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white rounded">
               Save Update
             </button>
           </div>

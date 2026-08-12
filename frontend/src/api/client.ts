@@ -213,7 +213,22 @@ export const api = {
     if (status) params.append('status', status);
     return fetchApi<any[]>(`/escalations?${params.toString()}`);
   },
-  updateEscalationStatus: (escalationId: string, data: { status: string; resolution_notes?: string }) =>
+  createEscalation: (data: {
+    campaign_id: string;
+    title: string;
+    description: string;
+    severity: string;
+    category: string;
+    blocker: boolean;
+  }) =>
+    fetchApi<any>('/escalations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateEscalationStatus: (
+    escalationId: string,
+    data: { status: string; resolution?: string; target_task_state?: string },
+  ) =>
     fetchApi<any>(`/escalations/${escalationId}/status`, {
       method: 'PATCH',
       body: JSON.stringify(data),

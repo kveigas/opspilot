@@ -10,14 +10,18 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefresh }) => {
   const [isAdvancing, setIsAdvancing] = useState<boolean>(false);
   const [isResetting, setIsResetting] = useState<boolean>(false);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   const handleAdvanceWorkday = async () => {
     setIsAdvancing(true);
+    setFeedback(null);
     try {
       await api.advanceDemoWorkday();
       if (onRefresh) onRefresh();
+      setFeedback({ kind: 'success', message: 'Workday advanced and the current view was refreshed.' });
     } catch (err: any) {
       console.error('Failed to advance demo workday:', err);
+      setFeedback({ kind: 'error', message: 'Unable to advance the demo right now. Please retry.' });
     } finally {
       setIsAdvancing(false);
     }
@@ -25,11 +29,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefre
 
   const handleResetDemo = async () => {
     setIsResetting(true);
+    setFeedback(null);
     try {
       await api.resetDemo();
       if (onRefresh) onRefresh();
+      setFeedback({ kind: 'success', message: 'Demo reset to the deterministic baseline.' });
     } catch (err: any) {
       console.error('Failed to reset demo:', err);
+      setFeedback({ kind: 'error', message: 'Unable to reset the demo right now. Please retry.' });
     } finally {
       setIsResetting(false);
     }
@@ -47,6 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefre
   ];
 
   return (
+    <>
     <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row items-center justify-between py-2 md:h-16 gap-2">
@@ -94,7 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefre
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors whitespace-nowrap ${
+                  className={`px-3 py-2.5 sm:py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors whitespace-nowrap ${
                     isActive
                       ? 'bg-emerald-700 text-white shadow-sm'
                       : 'text-slate-300 hover:text-white hover:bg-slate-800'
@@ -109,5 +117,19 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefre
         </div>
       </div>
     </header>
+    {feedback && (
+      <div
+        role="status"
+        aria-live="polite"
+        className={`px-4 py-2 text-center text-xs border-b ${
+          feedback.kind === 'success'
+            ? 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
+            : 'bg-rose-950/80 border-rose-800 text-rose-200'
+        }`}
+      >
+        {feedback.message}
+      </div>
+    )}
+    </>
   );
 };

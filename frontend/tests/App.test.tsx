@@ -1,6 +1,17 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import App from '../src/App';
+
+const appMocks = vi.hoisted(() => ({
+  getTodayCockpit: vi.fn().mockResolvedValue({
+    critical_campaigns: [],
+    at_risk_campaigns: [],
+    open_escalations: [],
+    unallocated_backlog_summary: [],
+    qa_review_backlog_summary: [],
+  }),
+  resetDemo: vi.fn().mockResolvedValue({ status: 'DEMO_INITIALIZED' }),
+}));
 
 vi.mock('../src/api/client', () => ({
   api: {
@@ -11,15 +22,9 @@ vi.mock('../src/api/client', () => ({
     getAuditLogs: vi.fn().mockResolvedValue([]),
     getAllocations: vi.fn().mockResolvedValue([]),
     getTasks: vi.fn().mockResolvedValue([]),
-    getTodayCockpit: vi.fn().mockResolvedValue({
-      critical_campaigns: [],
-      at_risk_campaigns: [],
-      critical_escalations: [],
-      review_backlogs: [],
-      blocked_work: [],
-      rework_items: [],
-      delivery_candidates: [],
-    }),
+    getTodayCockpit: appMocks.getTodayCockpit,
+    resetDemo: appMocks.resetDemo,
+    advanceDemoWorkday: vi.fn().mockResolvedValue({ status: 'ON_TRACK' }),
   },
 }));
 
@@ -40,5 +45,16 @@ describe('App Component', () => {
     const calibrationTab = screen.getByRole('button', { name: 'Calibration' });
     fireEvent.click(calibrationTab);
     expect(screen.getByText('Calibration & Qualification Engine')).toBeInTheDocument();
+  });
+
+  it('refreshes the active page immediately after resetting the demo', async () => {
+    render(<App />);
+    const callsBeforeReset = appMocks.getTodayCockpit.mock.calls.length;
+
+    fireEvent.click(screen.getByRole('button', { name: /Reset/ }));
+
+    await waitFor(() => expect(appMocks.resetDemo).toHaveBeenCalled());
+    await waitFor(() => expect(appMocks.getTodayCockpit.mock.calls.length).toBeGreaterThan(callsBeforeReset));
+    expect(screen.getByText('Demo reset to the deterministic baseline.')).toBeInTheDocument();
   });
 });

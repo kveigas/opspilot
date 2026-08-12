@@ -14,6 +14,7 @@ export const CalibrationPage: React.FC = () => {
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [selectedRound, setSelectedRound] = useState<CalibrationRound | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   const [roundForm, setRoundForm] = useState({
     campaign_id: '',
@@ -59,6 +60,7 @@ export const CalibrationPage: React.FC = () => {
   const handleCreateRound = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setFeedback(null);
     try {
       await api.createCalibration({
         ...roundForm,
@@ -67,9 +69,12 @@ export const CalibrationPage: React.FC = () => {
         max_allowed_attempts: Number(roundForm.max_allowed_attempts),
       });
       setIsRoundModalOpen(false);
-      loadAll();
+      await loadAll();
+      setFeedback({ kind: 'success', message: 'Calibration round created and refreshed.' });
     } catch (err: any) {
-      setError(err.message || 'Failed to create calibration round');
+      console.error('Failed to create calibration round:', err);
+      setError('Unable to create the calibration round right now. Please retry.');
+      setFeedback({ kind: 'error', message: 'Unable to create the calibration round right now. Please retry.' });
     }
   };
 
@@ -83,6 +88,7 @@ export const CalibrationPage: React.FC = () => {
     e.preventDefault();
     if (!selectedRound) return;
     setError(null);
+    setFeedback(null);
 
     try {
       await api.recordCalibrationResult(selectedRound.id, {
@@ -91,9 +97,12 @@ export const CalibrationPage: React.FC = () => {
       });
 
       setIsResultModalOpen(false);
-      loadAll();
+      await loadAll();
+      setFeedback({ kind: 'success', message: 'Calibration result recorded and qualification state refreshed.' });
     } catch (err: any) {
-      setError(err.message || 'Failed to record calibration result');
+      console.error('Failed to record calibration result:', err);
+      setError('Unable to record the calibration result right now. Please retry.');
+      setFeedback({ kind: 'error', message: 'Unable to record the calibration result right now. Please retry.' });
     }
   };
 
@@ -114,6 +123,20 @@ export const CalibrationPage: React.FC = () => {
           <Plus className="w-4 h-4" /> Create Calibration Round
         </button>
       </div>
+
+      {feedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-lg border px-4 py-3 text-sm ${
+            feedback.kind === 'success'
+              ? 'bg-emerald-950/40 border-emerald-800 text-emerald-200'
+              : 'bg-rose-950/40 border-rose-800 text-rose-200'
+          }`}
+        >
+          {feedback.message}
+        </div>
+      )}
 
       {loading ? (
         <div className="p-8 text-ops-muted">Loading calibration rounds...</div>
