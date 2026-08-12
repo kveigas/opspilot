@@ -23,8 +23,23 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
       const logs = await api.getAuditLogs();
       setAuditLogs(logs.slice(0, 10));
     } catch (err: any) {
-      console.error('Failed to load Today cockpit data', err);
-      setErrorMsg(err.message || 'Unable to connect to OpsPilot API backend.');
+      if (err.status === 404 || err.message?.includes('Not Found')) {
+        console.log('[OpsPilot] Demo database uninitialized. Auto-bootstrapping scenario...');
+        try {
+          await api.bootstrapDemo(true);
+          const cockpitData = await api.getTodayCockpit();
+          setCockpit(cockpitData);
+          const logs = await api.getAuditLogs();
+          setAuditLogs(logs.slice(0, 10));
+          return;
+        } catch (bootstrapErr: any) {
+          console.error('Failed to auto-bootstrap demo:', bootstrapErr);
+          setErrorMsg(bootstrapErr.message || 'Unable to connect to OpsPilot API backend.');
+        }
+      } else {
+        console.error('Failed to load Today cockpit data', err);
+        setErrorMsg(err.message || 'Unable to connect to OpsPilot API backend.');
+      }
     } finally {
       setIsLoading(false);
     }
