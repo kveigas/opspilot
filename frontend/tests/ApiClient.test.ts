@@ -36,4 +36,32 @@ describe('execution API client', () => {
       expect.objectContaining({ method: 'POST', signal: expect.any(AbortSignal) }),
     );
   });
+
+  it('submits a QA verdict through the review creation contract', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'review-1', verdict: 'ACCEPT' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.submitReview('task-1', {
+      reviewer_id: 'reviewer-1',
+      verdict: 'ACCEPT',
+      comment: 'Meets quality criteria.',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/reviews',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          task_id: 'task-1',
+          reviewer_id: 'reviewer-1',
+          verdict: 'ACCEPT',
+          comment: 'Meets quality criteria.',
+        }),
+        signal: expect.any(AbortSignal),
+      }),
+    );
+  });
 });

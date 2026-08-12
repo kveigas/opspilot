@@ -201,9 +201,9 @@ export const api = {
       method: 'POST',
     }),
   submitReview: (taskId: string, data: { reviewer_id: string; verdict: string; reason_code?: string; comment?: string }) =>
-    fetchApi<any>(`/reviews/tasks/${taskId}/verdict`, {
+    fetchApi<any>('/reviews', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ task_id: taskId, ...data }),
     }),
 
   // Escalations
