@@ -148,6 +148,7 @@ def get_today_manager_cockpit(db: Session) -> dict:
 
     return {
         "evaluated_at": datetime.now(UTC),
+        "campaign_count": len(campaigns),
         "critical_campaigns": critical_campaigns,
         "at_risk_campaigns": at_risk_campaigns,
         "critical_escalations": critical_escalations,

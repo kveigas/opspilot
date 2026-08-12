@@ -57,4 +57,34 @@ describe('Auto-Bootstrap Flow Tests', () => {
       expect(screen.getByText('Alpha Campaign')).toBeInTheDocument();
     });
   });
+
+  it('auto-bootstraps when an empty backend returns a successful cockpit response', async () => {
+    vi.mocked(api.getTodayCockpit)
+      .mockResolvedValueOnce({
+        campaign_count: 0,
+        critical_campaigns: [],
+        at_risk_campaigns: [],
+        open_escalations: [],
+        unallocated_backlog_summary: [],
+        qa_review_backlog_summary: [],
+      })
+      .mockResolvedValueOnce({
+        campaign_count: 1,
+        critical_campaigns: [{ campaign_id: 'c1', name: 'Alpha Campaign', sla_status: 'CRITICAL' }],
+        at_risk_campaigns: [],
+        open_escalations: [],
+        unallocated_backlog_summary: [],
+        qa_review_backlog_summary: [],
+      });
+    vi.mocked(api.bootstrapDemo).mockResolvedValueOnce({
+      status: 'DEMO_INITIALIZED',
+      campaign_id: 'c1',
+    });
+    vi.mocked(api.getAuditLogs).mockResolvedValue([]);
+
+    render(<TodayPage />);
+
+    await waitFor(() => expect(api.bootstrapDemo).toHaveBeenCalledWith(true));
+    expect(await screen.findByText('Alpha Campaign')).toBeInTheDocument();
+  });
 });

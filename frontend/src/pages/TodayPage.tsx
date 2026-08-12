@@ -18,7 +18,14 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const cockpitData = await api.getTodayCockpit();
+      let cockpitData = await api.getTodayCockpit();
+      if (cockpitData.campaign_count === 0) {
+        console.log('[OpsPilot] Empty demo database detected. Auto-bootstrapping scenario...');
+        setIsBootstrapping(true);
+        await api.bootstrapDemo(true);
+        cockpitData = await api.getTodayCockpit();
+        setIsBootstrapping(false);
+      }
       setCockpit(cockpitData);
 
       const logs = await api.getAuditLogs();
@@ -45,6 +52,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
         setErrorMsg('Unable to load the manager cockpit right now. Please retry.');
       }
     } finally {
+      setIsBootstrapping(false);
       setIsLoading(false);
     }
   };

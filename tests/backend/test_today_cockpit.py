@@ -2,6 +2,7 @@ def test_today_manager_cockpit(client):
     res = client.get("/api/v1/today")
     assert res.status_code == 200
     data = res.json()
+    assert data["campaign_count"] == 0
     assert "critical_campaigns" in data
     assert "at_risk_campaigns" in data
     assert "critical_escalations" in data
@@ -28,6 +29,7 @@ def test_today_baseline_agrees_with_authoritative_operational_state(client):
 
     campaign = next(item for item in today["critical_campaigns"] if item["campaign_id"] == campaign_id)
 
+    assert today["campaign_count"] == 1
     assert campaign["name"] == "Multilingual AI Response Evaluation"
     assert campaign["sla_status"] == sla["status"] == "CRITICAL"
     assert campaign["delivery_status"] == delivery["status"] == "NOT_READY"
