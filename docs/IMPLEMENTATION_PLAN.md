@@ -75,7 +75,7 @@ gantt
 
 ### Phase 5 (RC1) — Production Build, Deployment & Portfolio Integration
 - **DELIVERABLES**:
-  - FastAPI backend deployment on Render (`https://opspilot-api.onrender.com`).
+  - FastAPI backend deployment on Render (`https://opspilot-c5y3.onrender.com`).
   - Compiled static frontend deployment on GitHub Pages (`https://kveigas.github.io/opspilot/`).
   - OpsPilot project card & case-study modal added to main portfolio (`Kevin_Portfolio`).
 - **TESTS**: Live deployment smoke tests; cross-browser verification.

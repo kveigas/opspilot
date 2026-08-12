@@ -10,8 +10,8 @@ OpsPilot is a production-grade, rules-based operational control system designed 
 ### 🌐 Live Public Deployment
 
 - 🚀 **Live Public Demo**: [https://kveigas.github.io/opspilot/](https://kveigas.github.io/opspilot/)
-- ⚙️ **Live API Base**: [https://opspilot-api.onrender.com](https://opspilot-api.onrender.com)
-- 📖 **Interactive API Docs**: [https://opspilot-api.onrender.com/docs](https://opspilot-api.onrender.com/docs)
+- ⚙️ **Live API Base**: [https://opspilot-c5y3.onrender.com](https://opspilot-c5y3.onrender.com)
+- 📖 **Interactive API Docs**: [https://opspilot-c5y3.onrender.com/docs](https://opspilot-c5y3.onrender.com/docs)
 
 ---
 

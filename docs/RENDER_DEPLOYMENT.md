@@ -1,6 +1,6 @@
 # OpsPilot Render Deployment Guide
 
-**Target Web Service**: `opspilot-api`  
+**Target Web Service**: `opspilot-c5y3`  
 **Environment**: Render Free Web Service (Python 3.12 / 3.13)
 
 ---
@@ -10,7 +10,7 @@
 | Setting | Value |
 | :--- | :--- |
 | **Service Type** | Web Service |
-| **Name** | `opspilot-api` |
+| **Name** | `opspilot-c5y3` |
 | **Environment** | `Python 3` |
 | **Region** | Oregon (US West) or Frankfurt (EU Central) |
 | **Branch** | `main` |
