@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { runDemoAction } from './demoActions';
+import { demoMode, snapshotFor, whenLive, type LiveApi } from './demoSnapshot';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL
   ? `${import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '')}/api/v1`
@@ -40,7 +41,7 @@ function describeError(detail: unknown, status: number): string {
  * for a repeated key, a mutation whose outcome is unknown (timeout, dropped connection,
  * 5xx, or "still processing") can be retried safely with the same key.
  */
-export async function fetchApi<T>(endpoint: string, options?: RequestOptions): Promise<T> {
+async function liveFetch<T>(endpoint: string, options?: RequestOptions): Promise<T> {
   const method = (options?.method ?? 'GET').toUpperCase();
   const mutating = method !== 'GET' && method !== 'HEAD';
   const timeoutMs = options?.timeoutMs ?? (endpoint.includes('bootstrap') ? 45000 : 30000);
@@ -107,6 +108,38 @@ export async function fetchApi<T>(endpoint: string, options?: RequestOptions): P
     }
   }
   throw new ApiError('Maximum retry attempts exceeded.', 'NETWORK_UNAVAILABLE');
+}
+
+// Instant demo (see demoSnapshot.ts). A sleeping free-tier API can take up to a minute to start.
+const liveApi: LiveApi = {
+  probe: () => liveFetch('/health', { timeoutMs: 1500, retries: 0 }),
+  wake: async () => {
+    const deadline = Date.now() + 180000;
+    for (;;) {
+      try {
+        await liveFetch('/health', { timeoutMs: 60000, retries: 0 });
+        break;
+      } catch (err) {
+        if (Date.now() > deadline) throw err;
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+    }
+    const campaigns = await liveFetch<any[]>('/campaigns');
+    if (campaigns.length > 0) return false;
+    await liveFetch('/demo/bootstrap?reset=false', { method: 'POST', timeoutMs: 45000 });
+    return true;
+  },
+};
+
+/** Reads come from the instant-demo snapshot while the live API wakes; everything else waits for it. */
+export async function fetchApi<T>(endpoint: string, options?: RequestOptions): Promise<T> {
+  if ((await demoMode(liveApi)) === 'snapshot') {
+    const method = (options?.method ?? 'GET').toUpperCase();
+    const saved = method === 'GET' ? await snapshotFor(endpoint) : undefined;
+    if (saved !== undefined) return saved as T;
+    await whenLive(liveApi, method !== 'GET');
+  }
+  return liveFetch<T>(endpoint, options);
 }
 
 const post = <T>(endpoint: string, body?: unknown, extra?: RequestOptions) =>

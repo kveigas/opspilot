@@ -26,6 +26,7 @@ playwright-report/
 node_modules/
 dist/
 .vite/
+frontend/public/demo-snapshot/
 
 # IDE / OS
 .idea/

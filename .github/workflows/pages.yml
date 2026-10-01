@@ -45,6 +45,19 @@ jobs:
         working-directory: ./frontend
         run: npm run test -- --run
 
+      # The hosted API sleeps when idle. The demo's starting state is pre-computed by the same
+      # backend code and shipped with the site, so the public demo renders instantly.
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build instant-demo snapshot
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          python scripts/build_demo_snapshot.py --output frontend/public/demo-snapshot
+
       - name: Build Frontend for GitHub Pages Production
         working-directory: ./frontend
         env:

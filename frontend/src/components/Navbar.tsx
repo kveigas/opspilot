@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { CalendarClock, FastForward, HelpCircle, RotateCcw } from 'lucide-react';
+import { CalendarClock, FastForward, HelpCircle, Loader2, RotateCcw } from 'lucide-react';
 import { api } from '../api/client';
 import { useDemoAction } from '../api/demoActions';
+import { useSnapshotStatus } from '../api/demoSnapshot';
 import { Modal } from './Modal';
 import { Button } from './ui';
 import { ROUTES } from '../routes';
@@ -17,6 +18,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefresh, onHelp }) => {
   const demoAction = useDemoAction();
+  const snapshotStatus = useSnapshotStatus();
   const { campaigns, selectedId, selected, select } = useCampaigns();
   const [confirmReset, setConfirmReset] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState<boolean>(false);
@@ -97,6 +99,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefre
                 <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-800/70 bg-amber-950/40 px-2.5 py-1.5 text-xs text-amber-200" title="Synthetic demo campaign running on a simulation clock">
                   <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>Simulated day · {formatDate(selected.operational_date)}</span>
+                </span>
+              )}
+              {snapshotStatus !== 'live' && (
+                <span
+                  role="status"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-sky-800/70 bg-sky-950/40 px-2.5 py-1.5 text-xs text-sky-200"
+                  title="The demo server sleeps when idle and can take up to a minute to start. Until then you see the demo's starting data; actions run as soon as the server is ready."
+                >
+                  <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden="true" />
+                  <span>{snapshotStatus === 'starting' ? 'Live server starting · your action runs when it is ready' : 'Live server starting · showing saved demo data'}</span>
                 </span>
               )}
               <Button variant="primary" size="sm" onClick={handleAdvanceWorkday} disabled={busy}>
