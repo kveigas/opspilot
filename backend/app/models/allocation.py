@@ -3,7 +3,8 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 from app.database import Base
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
+from app.models.types import UTCDateTime
+from sqlalchemy import Date, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -24,7 +25,8 @@ class AllocationRun(Base):
     workers_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     capacity_consumed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     unallocated_reasons_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    strategy: Mapped[str | None] = mapped_column(String(20), nullable=True, default="BALANCED")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     campaign: Mapped["Campaign"] = relationship("Campaign")
     allocations: Mapped[list["Allocation"]] = relationship("Allocation", back_populates="allocation_run", cascade="all, delete-orphan")
@@ -39,8 +41,8 @@ class Allocation(Base):
     task_id: Mapped[str] = mapped_column(String(36), ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
     worker_id: Mapped[str] = mapped_column(String(36), ForeignKey("workers.id", ondelete="CASCADE"), nullable=False)
     operational_date: Mapped[date] = mapped_column(Date, nullable=False)
-    allocated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
-    deallocated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    allocated_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=lambda: datetime.now(UTC))
+    deallocated_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVE")
     reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

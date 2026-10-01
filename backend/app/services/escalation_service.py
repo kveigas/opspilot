@@ -4,6 +4,7 @@ from app.models.escalation import Escalation
 from app.models.task import Task
 from app.schemas.escalation import EscalationCreate, EscalationStatusUpdate
 from app.services.audit_service import log_audit
+from app.services.transaction import atomic
 from app.services.transition_service import transition_task_state
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -18,6 +19,7 @@ VALID_ESCALATION_TRANSITIONS = {
 }
 
 
+@atomic
 def create_escalation(db: Session, data: EscalationCreate) -> Escalation:
     now = datetime.now(UTC)
     esc = Escalation(
@@ -41,8 +43,7 @@ def create_escalation(db: Session, data: EscalationCreate) -> Escalation:
         if task and task.state in ["IN_REVIEW", "IN_PROGRESS", "ASSIGNED"]:
             transition_task_state(db, task, "ESCALATED", reason=f"Escalation created: {data.title}")
 
-    db.commit()
-    db.refresh(esc)
+    db.flush()
 
     log_audit(
         db,
@@ -54,6 +55,7 @@ def create_escalation(db: Session, data: EscalationCreate) -> Escalation:
     return esc
 
 
+@atomic
 def update_escalation_status(db: Session, escalation_id: str, data: EscalationStatusUpdate) -> Escalation:
     esc = db.query(Escalation).filter(Escalation.id == escalation_id).first()
     if not esc:
@@ -107,8 +109,7 @@ def update_escalation_status(db: Session, escalation_id: str, data: EscalationSt
             summary=f"Updated escalation '{esc.id}' status to {target_status}.",
         )
 
-    db.commit()
-    db.refresh(esc)
+    db.flush()
     return esc
 
 

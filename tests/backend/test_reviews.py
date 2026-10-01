@@ -1,7 +1,8 @@
 from datetime import date
+
 from app.models.campaign import Campaign
-from app.models.worker import Worker
 from app.models.task import Task
+from app.models.worker import Worker
 
 
 def test_review_submission_and_eligibility_rules(client, db_session):

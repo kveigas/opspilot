@@ -1,61 +1,42 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Phase 4 Flagship Recruiter Demo Flow', () => {
-  test('Complete 2-3 Minute Recruiter Evaluation Journey', async ({ page }) => {
+test.describe('Recruiter demo journey', () => {
+  test('guided manager loop: escalation, quality-aware allocation, workday, QA evidence, delivery', async ({ page }) => {
     test.setTimeout(150000);
 
-    // Step 1: Open Application
+    // 1. The empty demo seeds itself once and the cockpit leads with the next best action.
     await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'What needs your attention' })).toBeVisible();
+    await expect(page.getByText(/Simulated day/).first()).toBeVisible({ timeout: 45000 });
+    await expect(page.getByText('Unable to start the OpsPilot demo')).toHaveCount(0);
 
-    // Step 2: Load Public Demo Scenario
-    const bootstrapPromise = page.waitForResponse((resp) =>
-      resp.url().includes('/api/v1/demo/bootstrap') && resp.status() === 200
-    );
+    // 2. Resolve the critical escalation straight from the recommended action.
+    await page.getByRole('button', { name: 'Open escalations', exact: true }).click();
+    await expect(page.getByRole('tab', { name: /Escalations/ })).toHaveAttribute('aria-selected', 'true');
+    await page.getByRole('button', { name: 'Update status' }).first().click();
+    await page.getByLabel('Decision and rationale').fill('Client confirmed guideline 4.2; guideline v1.1 published.');
+    await page.getByRole('button', { name: 'Save Update' }).click();
+    await expect(page.getByText('Escalation status updated and queues refreshed.')).toBeVisible();
 
-    await page.getByRole('button', { name: '🚀 Load Public Demo Scenario' }).click();
-    await bootstrapPromise;
-
-    // Wait 500ms for React state update
-    await page.waitForTimeout(500);
-
-    // Step 3: Inspect Initial Unhealthy State on Today Cockpit
-    await expect(page.getByText('Manager Today Cockpit')).toBeVisible();
-
-    // Step 4: Resolve Critical Escalation via QA & Escalations Tab
-    await page.getByRole('button', { name: 'QA & Escalations', exact: true }).click();
-    await expect(page.getByText('QA & Escalations Operations')).toBeVisible();
-
-    // Switch subtab to Escalations
-    await page.getByRole('button', { name: /Escalations/i }).first().click();
-
-    const updateBtn = page.getByRole('button', { name: 'Update Status' }).first();
-    if (await updateBtn.isVisible()) {
-      await updateBtn.click();
-      await page.getByRole('button', { name: 'Save Update' }).click();
-    }
-
-    // Step 5: Domain Calibration Check
-    await page.getByRole('button', { name: 'Calibration', exact: true }).click();
-    await expect(page.getByText('Calibration & Qualification Engine')).toBeVisible();
-
-    // Step 6: Allocation Trigger
-    await page.getByRole('button', { name: 'Allocations', exact: true }).click();
+    // 3. Allocate with quality-aware routing (the default) and see why each annotator was chosen.
+    await page.getByRole('button', { name: 'Allocate', exact: true }).click();
     await expect(page.getByText('Task Allocation Engine')).toBeVisible();
+    await page.getByRole('button', { name: /Trigger Allocation Run/ }).click();
+    await expect(page.getByText(/tasks allocated for/)).toBeVisible();
+    await expect(page.getByText(/routed to TRUSTED annotator/).first()).toBeVisible();
 
-    const triggerAllocBtn = page.getByRole('button', { name: /Trigger Allocation Run/i }).first();
-    if (await triggerAllocBtn.isVisible() && !(await triggerAllocBtn.isDisabled())) {
-      await triggerAllocBtn.click();
-    }
+    // 4. Advance the simulated day.
+    await page.getByRole('button', { name: /Advance workday/ }).click();
+    await expect(page.getByText(/Workday .* complete/)).toBeVisible({ timeout: 120000 });
 
-    // Step 7: Advance Demo Workday via Header CTA
-    await page.getByRole('button', { name: '⚡ Advance Workday' }).first().click();
-    await expect(page.getByText('Workday advanced and the current view was refreshed.')).toBeVisible({
-      timeout: 120000,
-    });
+    // 5. Quality insights explain trust tiers and delivered accuracy.
+    await page.getByRole('button', { name: 'Quality insights', exact: true }).click();
+    await expect(page.getByText('Estimated delivered accuracy')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Annotator trust table' })).toBeVisible();
 
-    // Step 8: Inspect Delivery Readiness
+    // 6. Delivery gates with evidence.
     await page.getByRole('button', { name: 'Delivery', exact: true }).click();
     await expect(page.getByText('Campaign Delivery Readiness')).toBeVisible();
-    await expect(page.getByText('Mandatory Delivery Gate Checklist')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Mandatory gates')).toBeVisible({ timeout: 10000 });
   });
 });

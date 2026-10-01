@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -18,3 +18,5 @@ class SLAResponse(BaseModel):
     open_critical_escalations: int
     reason_codes: list[str]
     evaluated_at: datetime
+    operational_date: date | None = None
+    simulated_clock: bool = False

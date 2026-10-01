@@ -1,8 +1,13 @@
 import { defineConfig } from '@playwright/test';
 
+// These specs reach the public GitHub Pages deployment, the separate portfolio site, or
+// reset/advance shared demo state to capture screenshots. They never run by default.
+const EXTERNAL_SPECS = ['**/live-deployment.spec.ts', '**/portfolio-validation.spec.ts', '**/capture-screenshots.spec.ts'];
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 30000,
+  testIgnore: process.env.OPSPILOT_E2E_EXTERNAL === '1' ? [] : EXTERNAL_SPECS,
   use: {
     baseURL: 'http://localhost:5173',
     headless: true,

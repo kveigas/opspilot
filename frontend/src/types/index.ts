@@ -10,6 +10,7 @@ export interface Campaign {
   total_volume: number;
   target_quality_pct: number;
   review_sampling_pct: number;
+  qa_policy?: 'FLAT' | 'ADAPTIVE';
   target_daily_throughput: number;
   start_date: string;
   due_date: string;
@@ -21,6 +22,8 @@ export interface Campaign {
   created_at: string;
   updated_at: string;
   required_skills: string[];
+  operational_date?: string;
+  simulated_clock?: boolean;
 }
 
 export type WorkerRole = 'ANNOTATOR' | 'REVIEWER' | 'LEAD';

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CalibrationRoundCreate(BaseModel):
@@ -25,8 +25,7 @@ class CalibrationResultResponse(BaseModel):
     attempt_number: int
     evaluated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CalibrationRoundResponse(BaseModel):
@@ -40,5 +39,4 @@ class CalibrationRoundResponse(BaseModel):
     created_at: datetime
     results: list[CalibrationResultResponse] = Field(default_factory=list)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

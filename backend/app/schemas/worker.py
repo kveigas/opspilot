@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class WorkerBase(BaseModel):
@@ -34,8 +34,7 @@ class WorkerQualificationSummary(BaseModel):
     score: float | None = None
     attempts_used: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WorkerResponse(WorkerBase):
@@ -43,5 +42,4 @@ class WorkerResponse(WorkerBase):
     created_at: datetime
     qualifications: list[WorkerQualificationSummary] = Field(default_factory=list)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

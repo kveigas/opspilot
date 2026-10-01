@@ -1,8 +1,7 @@
 from datetime import date
+
 from app.models.campaign import Campaign
-from app.models.worker import Worker, WorkerSkill, WorkerQualification
-from app.models.task import Task, TaskSkill
-from app.models.capacity import WorkerDailyCapacity
+from app.models.worker import Worker, WorkerQualification, WorkerSkill
 
 
 def test_allocation_eligibility_and_cross_campaign_capacity(client, db_session):

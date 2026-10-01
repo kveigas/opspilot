@@ -1,0 +1,1004 @@
+{
+  "design": {
+    "worlds": 40,
+    "annotators": 12,
+    "days": 10,
+    "tasks_per_annotator_per_day": 40,
+    "weak_share": 0.25,
+    "strong_accuracy_prior": "Beta(97,3)",
+    "weak_accuracy_prior": "Beta(85,15)",
+    "base_sampling_pct": 20.0,
+    "target_quality_pct": 95.0,
+    "note": "Synthetic worlds; FLAT budget-matched receives exactly ADAPTIVE's review share."
+  },
+  "adaptive": {
+    "mean_residual_error_rate": 0.017729166666666667,
+    "sd": 0.0034186464974670715,
+    "mean_review_share": 0.4048385416666667
+  },
+  "flat_budget_matched": {
+    "mean_residual_error_rate": 0.035182291666666664,
+    "sd": 0.00460687125672046,
+    "mean_review_share": 0.4047864583333333
+  },
+  "flat_base_rate": {
+    "mean_residual_error_rate": 0.047734375,
+    "sd": 0.006079619867496825,
+    "mean_review_share": 0.19966666666666666
+  },
+  "flat_equal_quality": {
+    "mean_residual_error_rate": 0.01741145833333333,
+    "sd": 0.00343394095086969,
+    "mean_review_share": 0.7060625
+  },
+  "review_saving_at_equal_quality": 0.4266250627010121,
+  "paired_difference_flat_minus_adaptive": {
+    "mean": 0.017453125,
+    "ci95_low": 0.016299157196175657,
+    "ci95_high": 0.018607092803824343,
+    "adaptive_better_in_worlds": 40,
+    "worlds": 40
+  },
+  "worlds": [
+    {
+      "world": 0,
+      "adaptive": {
+        "reviews": 1866,
+        "tasks": 4800,
+        "residual_error_rate": 0.016875
+      },
+      "flat_budget_matched": {
+        "reviews": 1868,
+        "tasks": 4800,
+        "residual_error_rate": 0.035208333333333335
+      },
+      "flat_base_rate": {
+        "reviews": 983,
+        "tasks": 4800,
+        "residual_error_rate": 0.043541666666666666
+      },
+      "flat_equal_quality": {
+        "reviews": 3522,
+        "tasks": 4800,
+        "residual_error_rate": 0.01625
+      },
+      "no_qa_error_rate": 0.05922459532943858
+    },
+    {
+      "world": 1,
+      "adaptive": {
+        "reviews": 1963,
+        "tasks": 4800,
+        "residual_error_rate": 0.017083333333333332
+      },
+      "flat_budget_matched": {
+        "reviews": 1895,
+        "tasks": 4800,
+        "residual_error_rate": 0.04083333333333333
+      },
+      "flat_base_rate": {
+        "reviews": 911,
+        "tasks": 4800,
+        "residual_error_rate": 0.050833333333333335
+      },
+      "flat_equal_quality": {
+        "reviews": 3689,
+        "tasks": 4800,
+        "residual_error_rate": 0.01625
+      },
+      "no_qa_error_rate": 0.06259822343381172
+    },
+    {
+      "world": 2,
+      "adaptive": {
+        "reviews": 1991,
+        "tasks": 4800,
+        "residual_error_rate": 0.02020833333333333
+      },
+      "flat_budget_matched": {
+        "reviews": 1952,
+        "tasks": 4800,
+        "residual_error_rate": 0.04375
+      },
+      "flat_base_rate": {
+        "reviews": 946,
+        "tasks": 4800,
+        "residual_error_rate": 0.058125
+      },
+      "flat_equal_quality": {
+        "reviews": 3497,
+        "tasks": 4800,
+        "residual_error_rate": 0.019791666666666666
+      },
+      "no_qa_error_rate": 0.07089964850415098
+    },
+    {
+      "world": 3,
+      "adaptive": {
+        "reviews": 1694,
+        "tasks": 4800,
+        "residual_error_rate": 0.021041666666666667
+      },
+      "flat_budget_matched": {
+        "reviews": 1663,
+        "tasks": 4800,
+        "residual_error_rate": 0.034166666666666665
+      },
+      "flat_base_rate": {
+        "reviews": 949,
+        "tasks": 4800,
+        "residual_error_rate": 0.042708333333333334
+      },
+      "flat_equal_quality": {
+        "reviews": 2882,
+        "tasks": 4800,
+        "residual_error_rate": 0.020833333333333332
+      },
+      "no_qa_error_rate": 0.05812065292649615
+    },
+    {
+      "world": 4,
+      "adaptive": {
+        "reviews": 1688,
+        "tasks": 4800,
+        "residual_error_rate": 0.014375
+      },
+      "flat_budget_matched": {
+        "reviews": 1616,
+        "tasks": 4800,
+        "residual_error_rate": 0.0325
+      },
+      "flat_base_rate": {
+        "reviews": 914,
+        "tasks": 4800,
+        "residual_error_rate": 0.03666666666666667
+      },
+      "flat_equal_quality": {
+        "reviews": 3478,
+        "tasks": 4800,
+        "residual_error_rate": 0.014166666666666666
+      },
+      "no_qa_error_rate": 0.044559015402522495
+    },
+    {
+      "world": 5,
+      "adaptive": {
+        "reviews": 2257,
+        "tasks": 4800,
+        "residual_error_rate": 0.014166666666666666
+      },
+      "flat_budget_matched": {
+        "reviews": 2323,
+        "tasks": 4800,
+        "residual_error_rate": 0.03145833333333333
+      },
+      "flat_base_rate": {
+        "reviews": 967,
+        "tasks": 4800,
+        "residual_error_rate": 0.050833333333333335
+      },
+      "flat_equal_quality": {
+        "reviews": 3792,
+        "tasks": 4800,
+        "residual_error_rate": 0.013333333333333334
+      },
+      "no_qa_error_rate": 0.060196005293015276
+    },
+    {
+      "world": 6,
+      "adaptive": {
+        "reviews": 1938,
+        "tasks": 4800,
+        "residual_error_rate": 0.011666666666666667
+      },
+      "flat_budget_matched": {
+        "reviews": 1930,
+        "tasks": 4800,
+        "residual_error_rate": 0.028333333333333332
+      },
+      "flat_base_rate": {
+        "reviews": 990,
+        "tasks": 4800,
+        "residual_error_rate": 0.038125
+      },
+      "flat_equal_quality": {
+        "reviews": 3715,
+        "tasks": 4800,
+        "residual_error_rate": 0.011458333333333333
+      },
+      "no_qa_error_rate": 0.04833474411039418
+    },
+    {
+      "world": 7,
+      "adaptive": {
+        "reviews": 1758,
+        "tasks": 4800,
+        "residual_error_rate": 0.021666666666666667
+      },
+      "flat_budget_matched": {
+        "reviews": 1761,
+        "tasks": 4800,
+        "residual_error_rate": 0.0425
+      },
+      "flat_base_rate": {
+        "reviews": 977,
+        "tasks": 4800,
+        "residual_error_rate": 0.051666666666666666
+      },
+      "flat_equal_quality": {
+        "reviews": 3226,
+        "tasks": 4800,
+        "residual_error_rate": 0.020416666666666666
+      },
+      "no_qa_error_rate": 0.06512310625709405
+    },
+    {
+      "world": 8,
+      "adaptive": {
+        "reviews": 1734,
+        "tasks": 4800,
+        "residual_error_rate": 0.020833333333333332
+      },
+      "flat_budget_matched": {
+        "reviews": 1704,
+        "tasks": 4800,
+        "residual_error_rate": 0.036041666666666666
+      },
+      "flat_base_rate": {
+        "reviews": 939,
+        "tasks": 4800,
+        "residual_error_rate": 0.04833333333333333
+      },
+      "flat_equal_quality": {
+        "reviews": 3065,
+        "tasks": 4800,
+        "residual_error_rate": 0.020625
+      },
+      "no_qa_error_rate": 0.05938459848302935
+    },
+    {
+      "world": 9,
+      "adaptive": {
+        "reviews": 1767,
+        "tasks": 4800,
+        "residual_error_rate": 0.015
+      },
+      "flat_budget_matched": {
+        "reviews": 1807,
+        "tasks": 4800,
+        "residual_error_rate": 0.03125
+      },
+      "flat_base_rate": {
+        "reviews": 956,
+        "tasks": 4800,
+        "residual_error_rate": 0.042291666666666665
+      },
+      "flat_equal_quality": {
+        "reviews": 3512,
+        "tasks": 4800,
+        "residual_error_rate": 0.015
+      },
+      "no_qa_error_rate": 0.053331070733868
+    },
+    {
+      "world": 10,
+      "adaptive": {
+        "reviews": 1763,
+        "tasks": 4800,
+        "residual_error_rate": 0.017916666666666668
+      },
+      "flat_budget_matched": {
+        "reviews": 1766,
+        "tasks": 4800,
+        "residual_error_rate": 0.0325
+      },
+      "flat_base_rate": {
+        "reviews": 993,
+        "tasks": 4800,
+        "residual_error_rate": 0.0425
+      },
+      "flat_equal_quality": {
+        "reviews": 3107,
+        "tasks": 4800,
+        "residual_error_rate": 0.017708333333333333
+      },
+      "no_qa_error_rate": 0.054531447354916995
+    },
+    {
+      "world": 11,
+      "adaptive": {
+        "reviews": 2169,
+        "tasks": 4800,
+        "residual_error_rate": 0.021666666666666667
+      },
+      "flat_budget_matched": {
+        "reviews": 2163,
+        "tasks": 4800,
+        "residual_error_rate": 0.038125
+      },
+      "flat_base_rate": {
+        "reviews": 924,
+        "tasks": 4800,
+        "residual_error_rate": 0.05375
+      },
+      "flat_equal_quality": {
+        "reviews": 3325,
+        "tasks": 4800,
+        "residual_error_rate": 0.021666666666666667
+      },
+      "no_qa_error_rate": 0.06258542495222219
+    },
+    {
+      "world": 12,
+      "adaptive": {
+        "reviews": 1926,
+        "tasks": 4800,
+        "residual_error_rate": 0.018125
+      },
+      "flat_budget_matched": {
+        "reviews": 1912,
+        "tasks": 4800,
+        "residual_error_rate": 0.03770833333333334
+      },
+      "flat_base_rate": {
+        "reviews": 948,
+        "tasks": 4800,
+        "residual_error_rate": 0.051875
+      },
+      "flat_equal_quality": {
+        "reviews": 3371,
+        "tasks": 4800,
+        "residual_error_rate": 0.017708333333333333
+      },
+      "no_qa_error_rate": 0.05740189099552906
+    },
+    {
+      "world": 13,
+      "adaptive": {
+        "reviews": 1807,
+        "tasks": 4800,
+        "residual_error_rate": 0.018541666666666668
+      },
+      "flat_budget_matched": {
+        "reviews": 1801,
+        "tasks": 4800,
+        "residual_error_rate": 0.03854166666666667
+      },
+      "flat_base_rate": {
+        "reviews": 970,
+        "tasks": 4800,
+        "residual_error_rate": 0.04833333333333333
+      },
+      "flat_equal_quality": {
+        "reviews": 3556,
+        "tasks": 4800,
+        "residual_error_rate": 0.018333333333333333
+      },
+      "no_qa_error_rate": 0.06232102564826547
+    },
+    {
+      "world": 14,
+      "adaptive": {
+        "reviews": 2129,
+        "tasks": 4800,
+        "residual_error_rate": 0.02
+      },
+      "flat_budget_matched": {
+        "reviews": 2115,
+        "tasks": 4800,
+        "residual_error_rate": 0.04145833333333333
+      },
+      "flat_base_rate": {
+        "reviews": 964,
+        "tasks": 4800,
+        "residual_error_rate": 0.056875
+      },
+      "flat_equal_quality": {
+        "reviews": 3543,
+        "tasks": 4800,
+        "residual_error_rate": 0.019791666666666666
+      },
+      "no_qa_error_rate": 0.06813408207389238
+    },
+    {
+      "world": 15,
+      "adaptive": {
+        "reviews": 1717,
+        "tasks": 4800,
+        "residual_error_rate": 0.025208333333333333
+      },
+      "flat_budget_matched": {
+        "reviews": 1700,
+        "tasks": 4800,
+        "residual_error_rate": 0.042291666666666665
+      },
+      "flat_base_rate": {
+        "reviews": 937,
+        "tasks": 4800,
+        "residual_error_rate": 0.052708333333333336
+      },
+      "flat_equal_quality": {
+        "reviews": 2969,
+        "tasks": 4800,
+        "residual_error_rate": 0.025
+      },
+      "no_qa_error_rate": 0.06210950747005117
+    },
+    {
+      "world": 16,
+      "adaptive": {
+        "reviews": 1980,
+        "tasks": 4800,
+        "residual_error_rate": 0.020625
+      },
+      "flat_budget_matched": {
+        "reviews": 2021,
+        "tasks": 4800,
+        "residual_error_rate": 0.033125
+      },
+      "flat_base_rate": {
+        "reviews": 982,
+        "tasks": 4800,
+        "residual_error_rate": 0.04645833333333333
+      },
+      "flat_equal_quality": {
+        "reviews": 3078,
+        "tasks": 4800,
+        "residual_error_rate": 0.020625
+      },
+      "no_qa_error_rate": 0.06318376099792022
+    },
+    {
+      "world": 17,
+      "adaptive": {
+        "reviews": 1912,
+        "tasks": 4800,
+        "residual_error_rate": 0.01625
+      },
+      "flat_budget_matched": {
+        "reviews": 1943,
+        "tasks": 4800,
+        "residual_error_rate": 0.03854166666666667
+      },
+      "flat_base_rate": {
+        "reviews": 943,
+        "tasks": 4800,
+        "residual_error_rate": 0.05
+      },
+      "flat_equal_quality": {
+        "reviews": 3550,
+        "tasks": 4800,
+        "residual_error_rate": 0.016041666666666666
+      },
+      "no_qa_error_rate": 0.06589565916795503
+    },
+    {
+      "world": 18,
+      "adaptive": {
+        "reviews": 2233,
+        "tasks": 4800,
+        "residual_error_rate": 0.014375
+      },
+      "flat_budget_matched": {
+        "reviews": 2283,
+        "tasks": 4800,
+        "residual_error_rate": 0.038125
+      },
+      "flat_base_rate": {
+        "reviews": 982,
+        "tasks": 4800,
+        "residual_error_rate": 0.056875
+      },
+      "flat_equal_quality": {
+        "reviews": 3868,
+        "tasks": 4800,
+        "residual_error_rate": 0.01375
+      },
+      "no_qa_error_rate": 0.07683026033793505
+    },
+    {
+      "world": 19,
+      "adaptive": {
+        "reviews": 1731,
+        "tasks": 4800,
+        "residual_error_rate": 0.018541666666666668
+      },
+      "flat_budget_matched": {
+        "reviews": 1755,
+        "tasks": 4800,
+        "residual_error_rate": 0.040625
+      },
+      "flat_base_rate": {
+        "reviews": 989,
+        "tasks": 4800,
+        "residual_error_rate": 0.05395833333333333
+      },
+      "flat_equal_quality": {
+        "reviews": 3401,
+        "tasks": 4800,
+        "residual_error_rate": 0.017708333333333333
+      },
+      "no_qa_error_rate": 0.07084919568821169
+    },
+    {
+      "world": 20,
+      "adaptive": {
+        "reviews": 2158,
+        "tasks": 4800,
+        "residual_error_rate": 0.018125
+      },
+      "flat_budget_matched": {
+        "reviews": 2170,
+        "tasks": 4800,
+        "residual_error_rate": 0.03145833333333333
+      },
+      "flat_base_rate": {
+        "reviews": 946,
+        "tasks": 4800,
+        "residual_error_rate": 0.04645833333333333
+      },
+      "flat_equal_quality": {
+        "reviews": 3271,
+        "tasks": 4800,
+        "residual_error_rate": 0.018125
+      },
+      "no_qa_error_rate": 0.056397187358690815
+    },
+    {
+      "world": 21,
+      "adaptive": {
+        "reviews": 1761,
+        "tasks": 4800,
+        "residual_error_rate": 0.015625
+      },
+      "flat_budget_matched": {
+        "reviews": 1727,
+        "tasks": 4800,
+        "residual_error_rate": 0.030416666666666668
+      },
+      "flat_base_rate": {
+        "reviews": 945,
+        "tasks": 4800,
+        "residual_error_rate": 0.03958333333333333
+      },
+      "flat_equal_quality": {
+        "reviews": 3187,
+        "tasks": 4800,
+        "residual_error_rate": 0.015625
+      },
+      "no_qa_error_rate": 0.0572214324296626
+    },
+    {
+      "world": 22,
+      "adaptive": {
+        "reviews": 1715,
+        "tasks": 4800,
+        "residual_error_rate": 0.025
+      },
+      "flat_budget_matched": {
+        "reviews": 1747,
+        "tasks": 4800,
+        "residual_error_rate": 0.04416666666666667
+      },
+      "flat_base_rate": {
+        "reviews": 1001,
+        "tasks": 4800,
+        "residual_error_rate": 0.05583333333333333
+      },
+      "flat_equal_quality": {
+        "reviews": 3183,
+        "tasks": 4800,
+        "residual_error_rate": 0.025
+      },
+      "no_qa_error_rate": 0.06558443206599884
+    },
+    {
+      "world": 23,
+      "adaptive": {
+        "reviews": 2362,
+        "tasks": 4800,
+        "residual_error_rate": 0.0175
+      },
+      "flat_budget_matched": {
+        "reviews": 2371,
+        "tasks": 4800,
+        "residual_error_rate": 0.027708333333333335
+      },
+      "flat_base_rate": {
+        "reviews": 934,
+        "tasks": 4800,
+        "residual_error_rate": 0.04666666666666667
+      },
+      "flat_equal_quality": {
+        "reviews": 3091,
+        "tasks": 4800,
+        "residual_error_rate": 0.0175
+      },
+      "no_qa_error_rate": 0.0588025159971588
+    },
+    {
+      "world": 24,
+      "adaptive": {
+        "reviews": 2085,
+        "tasks": 4800,
+        "residual_error_rate": 0.019583333333333335
+      },
+      "flat_budget_matched": {
+        "reviews": 2088,
+        "tasks": 4800,
+        "residual_error_rate": 0.033125
+      },
+      "flat_base_rate": {
+        "reviews": 993,
+        "tasks": 4800,
+        "residual_error_rate": 0.04708333333333333
+      },
+      "flat_equal_quality": {
+        "reviews": 3067,
+        "tasks": 4800,
+        "residual_error_rate": 0.019583333333333335
+      },
+      "no_qa_error_rate": 0.0609607441326937
+    },
+    {
+      "world": 25,
+      "adaptive": {
+        "reviews": 1941,
+        "tasks": 4800,
+        "residual_error_rate": 0.016041666666666666
+      },
+      "flat_budget_matched": {
+        "reviews": 1949,
+        "tasks": 4800,
+        "residual_error_rate": 0.03395833333333333
+      },
+      "flat_base_rate": {
+        "reviews": 955,
+        "tasks": 4800,
+        "residual_error_rate": 0.046875
+      },
+      "flat_equal_quality": {
+        "reviews": 3354,
+        "tasks": 4800,
+        "residual_error_rate": 0.015833333333333335
+      },
+      "no_qa_error_rate": 0.059420850718428064
+    },
+    {
+      "world": 26,
+      "adaptive": {
+        "reviews": 1756,
+        "tasks": 4800,
+        "residual_error_rate": 0.013541666666666667
+      },
+      "flat_budget_matched": {
+        "reviews": 1771,
+        "tasks": 4800,
+        "residual_error_rate": 0.029791666666666668
+      },
+      "flat_base_rate": {
+        "reviews": 961,
+        "tasks": 4800,
+        "residual_error_rate": 0.04
+      },
+      "flat_equal_quality": {
+        "reviews": 3320,
+        "tasks": 4800,
+        "residual_error_rate": 0.013125
+      },
+      "no_qa_error_rate": 0.05134057661957836
+    },
+    {
+      "world": 27,
+      "adaptive": {
+        "reviews": 1972,
+        "tasks": 4800,
+        "residual_error_rate": 0.020625
+      },
+      "flat_budget_matched": {
+        "reviews": 1921,
+        "tasks": 4800,
+        "residual_error_rate": 0.0425
+      },
+      "flat_base_rate": {
+        "reviews": 946,
+        "tasks": 4800,
+        "residual_error_rate": 0.05625
+      },
+      "flat_equal_quality": {
+        "reviews": 3381,
+        "tasks": 4800,
+        "residual_error_rate": 0.02020833333333333
+      },
+      "no_qa_error_rate": 0.0727220029185981
+    },
+    {
+      "world": 28,
+      "adaptive": {
+        "reviews": 2084,
+        "tasks": 4800,
+        "residual_error_rate": 0.022708333333333334
+      },
+      "flat_budget_matched": {
+        "reviews": 2085,
+        "tasks": 4800,
+        "residual_error_rate": 0.03208333333333333
+      },
+      "flat_base_rate": {
+        "reviews": 958,
+        "tasks": 4800,
+        "residual_error_rate": 0.04791666666666667
+      },
+      "flat_equal_quality": {
+        "reviews": 2913,
+        "tasks": 4800,
+        "residual_error_rate": 0.022291666666666668
+      },
+      "no_qa_error_rate": 0.057887368861092914
+    },
+    {
+      "world": 29,
+      "adaptive": {
+        "reviews": 1734,
+        "tasks": 4800,
+        "residual_error_rate": 0.014375
+      },
+      "flat_budget_matched": {
+        "reviews": 1706,
+        "tasks": 4800,
+        "residual_error_rate": 0.035625
+      },
+      "flat_base_rate": {
+        "reviews": 965,
+        "tasks": 4800,
+        "residual_error_rate": 0.04416666666666667
+      },
+      "flat_equal_quality": {
+        "reviews": 3619,
+        "tasks": 4800,
+        "residual_error_rate": 0.014166666666666666
+      },
+      "no_qa_error_rate": 0.05680444900511439
+    },
+    {
+      "world": 30,
+      "adaptive": {
+        "reviews": 2189,
+        "tasks": 4800,
+        "residual_error_rate": 0.015
+      },
+      "flat_budget_matched": {
+        "reviews": 2181,
+        "tasks": 4800,
+        "residual_error_rate": 0.03666666666666667
+      },
+      "flat_base_rate": {
+        "reviews": 941,
+        "tasks": 4800,
+        "residual_error_rate": 0.05125
+      },
+      "flat_equal_quality": {
+        "reviews": 3696,
+        "tasks": 4800,
+        "residual_error_rate": 0.015
+      },
+      "no_qa_error_rate": 0.07079076887706404
+    },
+    {
+      "world": 31,
+      "adaptive": {
+        "reviews": 2051,
+        "tasks": 4800,
+        "residual_error_rate": 0.019166666666666665
+      },
+      "flat_budget_matched": {
+        "reviews": 2037,
+        "tasks": 4800,
+        "residual_error_rate": 0.03625
+      },
+      "flat_base_rate": {
+        "reviews": 931,
+        "tasks": 4800,
+        "residual_error_rate": 0.050833333333333335
+      },
+      "flat_equal_quality": {
+        "reviews": 3360,
+        "tasks": 4800,
+        "residual_error_rate": 0.018958333333333334
+      },
+      "no_qa_error_rate": 0.06681150277560022
+    },
+    {
+      "world": 32,
+      "adaptive": {
+        "reviews": 1900,
+        "tasks": 4800,
+        "residual_error_rate": 0.011875
+      },
+      "flat_budget_matched": {
+        "reviews": 1887,
+        "tasks": 4800,
+        "residual_error_rate": 0.030416666666666668
+      },
+      "flat_base_rate": {
+        "reviews": 956,
+        "tasks": 4800,
+        "residual_error_rate": 0.03895833333333333
+      },
+      "flat_equal_quality": {
+        "reviews": 3603,
+        "tasks": 4800,
+        "residual_error_rate": 0.011875
+      },
+      "no_qa_error_rate": 0.05073057207487375
+    },
+    {
+      "world": 33,
+      "adaptive": {
+        "reviews": 2196,
+        "tasks": 4800,
+        "residual_error_rate": 0.017291666666666667
+      },
+      "flat_budget_matched": {
+        "reviews": 2206,
+        "tasks": 4800,
+        "residual_error_rate": 0.034583333333333334
+      },
+      "flat_base_rate": {
+        "reviews": 954,
+        "tasks": 4800,
+        "residual_error_rate": 0.049791666666666665
+      },
+      "flat_equal_quality": {
+        "reviews": 3504,
+        "tasks": 4800,
+        "residual_error_rate": 0.017291666666666667
+      },
+      "no_qa_error_rate": 0.057092439950061524
+    },
+    {
+      "world": 34,
+      "adaptive": {
+        "reviews": 2000,
+        "tasks": 4800,
+        "residual_error_rate": 0.018125
+      },
+      "flat_budget_matched": {
+        "reviews": 2022,
+        "tasks": 4800,
+        "residual_error_rate": 0.035
+      },
+      "flat_base_rate": {
+        "reviews": 971,
+        "tasks": 4800,
+        "residual_error_rate": 0.04895833333333333
+      },
+      "flat_equal_quality": {
+        "reviews": 3615,
+        "tasks": 4800,
+        "residual_error_rate": 0.017291666666666667
+      },
+      "no_qa_error_rate": 0.05745626120034275
+    },
+    {
+      "world": 35,
+      "adaptive": {
+        "reviews": 1924,
+        "tasks": 4800,
+        "residual_error_rate": 0.014166666666666666
+      },
+      "flat_budget_matched": {
+        "reviews": 1892,
+        "tasks": 4800,
+        "residual_error_rate": 0.031041666666666665
+      },
+      "flat_base_rate": {
+        "reviews": 914,
+        "tasks": 4800,
+        "residual_error_rate": 0.041875
+      },
+      "flat_equal_quality": {
+        "reviews": 3536,
+        "tasks": 4800,
+        "residual_error_rate": 0.013333333333333334
+      },
+      "no_qa_error_rate": 0.05220388222652694
+    },
+    {
+      "world": 36,
+      "adaptive": {
+        "reviews": 2827,
+        "tasks": 4800,
+        "residual_error_rate": 0.014791666666666667
+      },
+      "flat_budget_matched": {
+        "reviews": 2849,
+        "tasks": 4800,
+        "residual_error_rate": 0.026875
+      },
+      "flat_base_rate": {
+        "reviews": 955,
+        "tasks": 4800,
+        "residual_error_rate": 0.058541666666666665
+      },
+      "flat_equal_quality": {
+        "reviews": 3743,
+        "tasks": 4800,
+        "residual_error_rate": 0.014166666666666666
+      },
+      "no_qa_error_rate": 0.06933812754343227
+    },
+    {
+      "world": 37,
+      "adaptive": {
+        "reviews": 1468,
+        "tasks": 4800,
+        "residual_error_rate": 0.022291666666666668
+      },
+      "flat_budget_matched": {
+        "reviews": 1497,
+        "tasks": 4800,
+        "residual_error_rate": 0.03395833333333333
+      },
+      "flat_base_rate": {
+        "reviews": 990,
+        "tasks": 4800,
+        "residual_error_rate": 0.03958333333333333
+      },
+      "flat_equal_quality": {
+        "reviews": 2843,
+        "tasks": 4800,
+        "residual_error_rate": 0.021666666666666667
+      },
+      "no_qa_error_rate": 0.05562776857266616
+    },
+    {
+      "world": 38,
+      "adaptive": {
+        "reviews": 1785,
+        "tasks": 4800,
+        "residual_error_rate": 0.017083333333333332
+      },
+      "flat_budget_matched": {
+        "reviews": 1785,
+        "tasks": 4800,
+        "residual_error_rate": 0.03375
+      },
+      "flat_base_rate": {
+        "reviews": 984,
+        "tasks": 4800,
+        "residual_error_rate": 0.042291666666666665
+      },
+      "flat_equal_quality": {
+        "reviews": 3311,
+        "tasks": 4800,
+        "residual_error_rate": 0.017083333333333332
+      },
+      "no_qa_error_rate": 0.05679454590629973
+    },
+    {
+      "world": 39,
+      "adaptive": {
+        "reviews": 1798,
+        "tasks": 4800,
+        "residual_error_rate": 0.012083333333333333
+      },
+      "flat_budget_matched": {
+        "reviews": 1850,
+        "tasks": 4800,
+        "residual_error_rate": 0.030833333333333334
+      },
+      "flat_base_rate": {
+        "reviews": 972,
+        "tasks": 4800,
+        "residual_error_rate": 0.04
+      },
+      "flat_equal_quality": {
+        "reviews": 3821,
+        "tasks": 4800,
+        "residual_error_rate": 0.011875
+      },
+      "no_qa_error_rate": 0.0463743327537971
+    }
+  ]
+}

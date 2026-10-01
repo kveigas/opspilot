@@ -9,11 +9,14 @@ from app.models.worker import Worker
 from app.schemas.review import ReviewCreate
 from app.services.audit_service import log_audit
 from app.services.qualification_helper import is_worker_qualified_for_campaign
+from app.services.quality_service import plan_review_sample, policy_of
+from app.services.transaction import atomic
 from app.services.transition_service import transition_task_state
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 
+@atomic
 def submit_review(db: Session, data: ReviewCreate) -> Review:
     task = db.query(Task).filter(Task.id == data.task_id).first()
     if not task:
@@ -62,6 +65,9 @@ def submit_review(db: Session, data: ReviewCreate) -> Review:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Reason code is required when submitting a '{data.verdict}' verdict."
         )
+
+    if task.state != "IN_REVIEW":
+        raise HTTPException(409, "Only tasks in IN_REVIEW can receive a QA verdict.")
 
     # 3. Create Immutable Review Record
     now = datetime.now(UTC)
@@ -201,11 +207,11 @@ def submit_review(db: Session, data: ReviewCreate) -> Review:
             summary=f"Task '{task.id}' escalated by reviewer. Reason: {data.reason_code}.",
         )
 
-    db.commit()
-    db.refresh(review)
+    db.flush()
     return review
 
 
+@atomic
 def process_review_sampling_for_submitted_tasks(db: Session, campaign_id: str) -> dict:
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not campaign:
@@ -226,34 +232,57 @@ def process_review_sampling_for_submitted_tasks(db: Session, campaign_id: str) -
 
     total_submitted = len(submitted_tasks)
     sampling_pct = float(campaign.review_sampling_pct)
+    policy = policy_of(campaign)
 
-    batch_num = math.ceil(total_submitted * (sampling_pct / 100.0))
-    required_reviews = math.ceil(int(campaign.total_volume) * (sampling_pct / 100.0))
-    existing_reviews = db.query(Review).filter(Review.campaign_id == campaign_id).count()
-    existing_in_review = db.query(Task).filter(Task.campaign_id == campaign_id, Task.state == "IN_REVIEW").count()
-    needed_reviews = max(0, required_reviews - (existing_reviews + existing_in_review))
+    # FLAT keeps its campaign-level catch-up toward the volume-based review requirement.
+    flat_minimum = None
+    if policy != "ADAPTIVE":
+        required_reviews = math.ceil(int(campaign.total_volume) * (sampling_pct / 100.0))
+        existing_reviews = db.query(Review).filter(Review.campaign_id == campaign_id).count()
+        existing_in_review = db.query(Task).filter(Task.campaign_id == campaign_id, Task.state == "IN_REVIEW").count()
+        if existing_reviews + existing_in_review > 0:
+            flat_minimum = max(0, required_reviews - (existing_reviews + existing_in_review))
 
-    num_to_review = min(total_submitted, max(batch_num, needed_reviews)) if (existing_reviews + existing_in_review > 0) else batch_num
+    # Random (not oldest-first) selection, with each task's inclusion probability recorded.
+    plan = plan_review_sample(db, campaign, list(submitted_tasks), flat_minimum=flat_minimum)
 
     tasks_sent_to_review = 0
     tasks_auto_completed = 0
+    sent_by_tier: dict[str, int] = {}
 
-    for i, t in enumerate(submitted_tasks):
-        if i < num_to_review:
-            transition_task_state(db, t, "IN_REVIEW", reason="Selected for QA Sampling")
+    for t, selected, probability, tier in plan:
+        t.qa_sample_probability = probability
+        t.qa_sampling_tier = tier
+        if selected:
+            transition_task_state(db, t, "IN_REVIEW", reason=f"Selected for QA sampling ({tier}, p={probability:.2f})")
             tasks_sent_to_review += 1
+            sent_by_tier[tier] = sent_by_tier.get(tier, 0) + 1
         else:
             # Direct completion for un-sampled submitted tasks (NO Review record created)
             transition_task_state(db, t, "ACCEPTED", reason="Unsampled direct completion")
             transition_task_state(db, t, "COMPLETED", reason="Unsampled direct completion")
             tasks_auto_completed += 1
 
+    if total_submitted:
+        log_audit(
+            db,
+            action="QA_SAMPLE_DRAWN",
+            entity_type="CAMPAIGN",
+            entity_id=campaign_id,
+            summary=(
+                f"{policy} QA sampling selected {tasks_sent_to_review}/{total_submitted} submitted tasks "
+                f"for review (by tier: {dict(sorted(sent_by_tier.items()))})."
+            ),
+        )
+
     return {
         "campaign_id": campaign_id,
+        "qa_policy": policy,
         "total_submitted": total_submitted,
         "review_sampling_pct": sampling_pct,
         "tasks_sent_to_review": tasks_sent_to_review,
         "tasks_auto_completed": tasks_auto_completed,
+        "sent_to_review_by_tier": sent_by_tier,
     }
 
 

@@ -21,10 +21,10 @@ vi.mock('../src/api/client', async (importOriginal) => {
 
 describe('Auto-Bootstrap Flow Tests', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
-  it('fresh public demo auto-bootstrap from empty backend state', async () => {
+  it('does not mutate data on a missing or unavailable backend', async () => {
     // 1. First call to getTodayCockpit returns 404 (uninitialized backend)
     vi.mocked(api.getTodayCockpit)
       .mockRejectedValueOnce(new ApiError('Not Found', 'API_ERROR', 404))
@@ -46,16 +46,8 @@ describe('Auto-Bootstrap Flow Tests', () => {
 
     render(<TodayPage />);
 
-    // Expect bootstrapDemo to be called automatically
-    await waitFor(() => {
-      expect(api.bootstrapDemo).toHaveBeenCalledWith(true);
-    });
-
-    // Expect Today Cockpit heading to appear after auto-bootstrap completes
-    await waitFor(() => {
-      expect(screen.getByText('Manager Today Cockpit')).toBeInTheDocument();
-      expect(screen.getByText('Alpha Campaign')).toBeInTheDocument();
-    });
+    expect(await screen.findByText(/Existing data has not been reset/)).toBeInTheDocument();
+    expect(api.bootstrapDemo).not.toHaveBeenCalled();
   });
 
   it('auto-bootstraps when an empty backend returns a successful cockpit response', async () => {
@@ -84,7 +76,7 @@ describe('Auto-Bootstrap Flow Tests', () => {
 
     render(<TodayPage />);
 
-    await waitFor(() => expect(api.bootstrapDemo).toHaveBeenCalledWith(true));
+    await waitFor(() => expect(api.bootstrapDemo).toHaveBeenCalledWith(false));
     expect(await screen.findByText('Alpha Campaign')).toBeInTheDocument();
   });
 });

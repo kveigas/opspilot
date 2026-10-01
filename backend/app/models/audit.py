@@ -2,7 +2,8 @@ import uuid
 from datetime import UTC, datetime
 
 from app.database import Base
-from sqlalchemy import DateTime, String, Text
+from app.models.types import UTCDateTime
+from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -15,4 +16,4 @@ class AuditLog(Base):
     entity_type: Mapped[str] = mapped_column(String(40), nullable=False)
     entity_id: Mapped[str] = mapped_column(String(36), nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=lambda: datetime.now(UTC))

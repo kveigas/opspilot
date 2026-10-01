@@ -19,6 +19,7 @@ from app.api.v1 import (
 )
 from app.config import API_V1_STR, CORS_ORIGINS, PROJECT_NAME, VERSION
 from app.database import init_db
+from app.idempotency import install_idempotency
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -37,10 +38,14 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Installed before CORS so CORS stays outermost and also decorates replayed/conflict responses.
+    install_idempotency(app_instance)
+
     app_instance.add_middleware(
         CORSMiddleware,
         allow_origins=CORS_ORIGINS,
         allow_credentials=True,
+        expose_headers=["Idempotent-Replayed"],
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -66,7 +71,8 @@ def create_app() -> FastAPI:
         return {
             "status": "healthy",
             "service": "OpsPilot API",
-            "phase": "RC1",
+            "version": VERSION,
+            "phase": VERSION,
         }
 
     @app_instance.get("/")

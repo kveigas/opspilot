@@ -143,7 +143,7 @@ export const CalibrationPage: React.FC = () => {
       ) : rounds.length === 0 ? (
         <div className="bg-ops-card border border-ops-border rounded-xl p-12 text-center">
           <Award className="w-12 h-12 text-ops-muted mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-ops-text">No Calibration Rounds</h3>
+          <h2 className="text-lg font-bold text-ops-text">No Calibration Rounds</h2>
           <p className="text-sm text-ops-muted mt-1 max-w-md mx-auto">
             Create a calibration round for a domain to evaluate annotator precision before campaign assignment.
           </p>

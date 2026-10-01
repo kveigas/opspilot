@@ -1,8 +1,10 @@
 
 from app.models.audit import AuditLog
+from app.services.transaction import atomic
 from sqlalchemy.orm import Session
 
 
+@atomic
 def log_audit(
     db: Session,
     action: str,
@@ -19,8 +21,7 @@ def log_audit(
         summary=summary,
     )
     db.add(entry)
-    db.commit()
-    db.refresh(entry)
+    db.flush()
     return entry
 
 

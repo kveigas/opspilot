@@ -1,3 +1,4 @@
+from app.config import VERSION
 from fastapi import APIRouter
 
 router = APIRouter()
@@ -8,5 +9,6 @@ def health_check():
     return {
         "status": "healthy",
         "service": "OpsPilot API",
-        "phase": "Phase 1 Foundation",
+        "version": VERSION,
+        "phase": VERSION,
     }

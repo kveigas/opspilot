@@ -23,6 +23,7 @@ def api_trigger_allocation(
         campaign_id=data.campaign_id,
         operational_date=data.operational_date,
         max_tasks_to_allocate=data.max_tasks_to_allocate,
+        strategy=data.strategy,
     )
 
     reasons = json.loads(run.unallocated_reasons_json or "{}")
@@ -38,6 +39,7 @@ def api_trigger_allocation(
         capacity_consumed=run.capacity_consumed,
         unallocated_reason_counts=reasons,
         created_at=run.created_at,
+        strategy=run.strategy or "BALANCED",
     )
 
 
