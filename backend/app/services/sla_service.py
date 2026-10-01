@@ -188,7 +188,7 @@ def evaluate_campaign_sla(db: Session, campaign_id: str, operational_date: date 
             action="SLA_STATUS_CHANGED",
             entity_type="CAMPAIGN_SLA",
             entity_id=campaign_id,
-            summary=f"SLA status for campaign '{campaign.name}' changed to Status: {final_status}. Reasons: {list(reason_codes)}.",
+            summary=f"SLA status for campaign '{campaign.name}' changed to Status: {final_status}. Reasons: {sorted(reason_codes)}.",
         )
 
     return {
