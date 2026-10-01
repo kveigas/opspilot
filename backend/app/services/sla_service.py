@@ -7,6 +7,7 @@ from app.models.escalation import Escalation
 from app.models.task import Task
 from app.models.worker import Worker
 from app.services.audit_service import log_audit
+from app.services.clock_service import get_operational_date, is_simulated
 from app.services.qualification_helper import is_worker_qualified_for_campaign
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -24,7 +25,7 @@ def calculate_working_days(start: date, end: date) -> int:
     return working_days
 
 
-def evaluate_campaign_sla(db: Session, campaign_id: str, operational_date: date | None = None) -> dict:
+def evaluate_campaign_sla(db: Session, campaign_id: str, operational_date: date | None = None, *, record_audit: bool = True) -> dict:
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not campaign:
         raise HTTPException(
@@ -33,7 +34,7 @@ def evaluate_campaign_sla(db: Session, campaign_id: str, operational_date: date 
         )
 
     now_utc = datetime.now(UTC)
-    today_date = operational_date or now_utc.date()
+    today_date = operational_date or get_operational_date(db, campaign_id)
 
     tasks = db.query(Task).filter(Task.campaign_id == campaign_id).all()
     total_tasks = len(tasks)
@@ -55,7 +56,7 @@ def evaluate_campaign_sla(db: Session, campaign_id: str, operational_date: date 
     active_workers = (
         db.query(Worker)
         .filter(
-            Worker.is_active == True,
+            Worker.is_active.is_(True),
             Worker.availability == "AVAILABLE",
             Worker.role == "ANNOTATOR",
         )
@@ -179,9 +180,9 @@ def evaluate_campaign_sla(db: Session, campaign_id: str, operational_date: date 
         .first()
     )
 
-    prev_status = last_audit.summary.split("Status: ")[-1].split(" ")[0] if (last_audit and "Status: " in last_audit.summary) else None
+    prev_status = last_audit.summary.split("Status: ")[-1].split(" ")[0].rstrip(".") if (last_audit and "Status: " in last_audit.summary) else None
 
-    if prev_status != final_status:
+    if record_audit and prev_status != final_status:
         log_audit(
             db,
             action="SLA_STATUS_CHANGED",
@@ -203,4 +204,6 @@ def evaluate_campaign_sla(db: Session, campaign_id: str, operational_date: date 
         "open_critical_escalations": open_critical_escalations,
         "reason_codes": sorted(reason_codes),
         "evaluated_at": now_utc,
+        "operational_date": today_date,
+        "simulated_clock": is_simulated(db, campaign_id),
     }

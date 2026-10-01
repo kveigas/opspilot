@@ -3,10 +3,12 @@ from app.models.campaign import Campaign
 from app.models.task import Task, TaskSkill
 from app.schemas.task import TaskBatchCreate
 from app.services.audit_service import log_audit
+from app.services.transaction import atomic
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 
+@atomic
 def create_task_batch(db: Session, campaign_id: str, data: TaskBatchCreate) -> list[Task]:
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not campaign:
@@ -45,7 +47,7 @@ def create_task_batch(db: Session, campaign_id: str, data: TaskBatchCreate) -> l
         created_tasks.append(task)
 
     db.add_all(created_tasks)
-    db.commit()
+    db.flush()
 
     for t in created_tasks:
         db.refresh(t)

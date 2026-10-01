@@ -1,9 +1,6 @@
-from datetime import UTC, datetime
-from app.models.campaign import Campaign
-from app.models.worker import Worker, WorkerQualification
-from app.models.task import Task
 from app.models.escalation import Escalation
-from app.models.review import Review
+from app.models.task import Task
+from app.models.worker import Worker, WorkerQualification
 
 
 def test_demo_bootstrap_first_time_and_repeated(client):
@@ -80,24 +77,26 @@ def test_demo_recovery_story_end_to_end(client, db_session):
         "max_daily_capacity": 150,
     })
 
-    # Step 4: Complete campaign work and set review sampling to 0 to pass delivery readiness
-    camp = db_session.query(Campaign).filter(Campaign.id == camp_id).first()
-    if camp:
-        camp.review_sampling_pct = 0.0
+    # Step 4: Run the real operating loop instead of marking work complete by hand. Completing
+    # tasks without QA would (correctly) fail the delivered-accuracy gate for weak annotators.
+    start_date = client.get(f"/api/v1/campaigns/{camp_id}").json()["operational_date"]
+    alloc = client.post("/api/v1/allocations/trigger", json={"campaign_id": camp_id, "strategy": "QUALITY_AWARE"})
+    assert alloc.status_code == 201
+    assert alloc.json()["operational_date"] == start_date
 
-    # Step 5: Resolve all open escalations and unblock all blocked tasks
-    open_escs = db_session.query(Escalation).filter(Escalation.campaign_id == camp_id).all()
-    for e in open_escs:
-        e.status = "RESOLVED"
+    for _ in range(20):
+        remaining = db_session.query(Task).filter(Task.campaign_id == camp_id, Task.state != "COMPLETED").count()
+        if remaining == 0:
+            break
+        # Rework that exhausts its attempts opens HIGH escalations; the manager resolves them.
+        for e in db_session.query(Escalation).filter(Escalation.campaign_id == camp_id, Escalation.status == "OPEN"):
+            e.status = "RESOLVED"
+        db_session.commit()
+        assert client.post("/api/v1/demo/advance-workday").status_code == 200
 
-    now_utc = datetime.now(UTC)
-    tasks = db_session.query(Task).filter(Task.campaign_id == camp_id).all()
-    for t in tasks:
-        t.state = "COMPLETED"
-        t.completed_at = now_utc
-
-    db_session.commit()
+    assert db_session.query(Task).filter(Task.campaign_id == camp_id, Task.state != "COMPLETED").count() == 0
+    assert client.get(f"/api/v1/campaigns/{camp_id}").json()["operational_date"] > start_date
 
     # Verify Final Delivery State becomes READY
     deliv_final = client.get(f"/api/v1/campaigns/{camp_id}/delivery-readiness").json()
-    assert deliv_final["status"] in ["READY", "READY_WITH_WARNINGS"]
+    assert deliv_final["status"] in ["READY", "READY_WITH_WARNINGS"], deliv_final["blocking_reasons"]

@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 from app.models.task import Task
 from app.services.audit_service import log_audit
+from app.services.transaction import atomic
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,7 @@ VALID_TRANSITIONS: dict[str, set[str]] = {
 }
 
 
+@atomic
 def transition_task_state(
     db: Session,
     task: Task,
@@ -51,8 +53,7 @@ def transition_task_state(
     elif target_state == "COMPLETED":
         task.completed_at = now
 
-    db.commit()
-    db.refresh(task)
+    db.flush()
 
     summary_text = f"Transitioned task '{task.id}' state from '{current_state}' to '{target_state}'"
     if reason:

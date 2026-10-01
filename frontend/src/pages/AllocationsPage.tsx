@@ -1,65 +1,65 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Plus, Zap } from 'lucide-react';
 import { api } from '../api/client';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
+import { TaskHistoryDialog } from '../components/TaskHistoryDialog';
+import { Button, Card, EmptyState, Feedback, PageHeader, Stat } from '../components/ui';
+import { useCampaigns } from '../state/CampaignContext';
+import { useWorkerNames } from '../state/useWorkerNames';
+import { REASON_EXPLANATIONS, formatDate, formatTime, humanize } from '../lib/format';
+
+type Strategy = 'BALANCED' | 'QUALITY_AWARE';
+
+const STRATEGIES: { id: Strategy; title: string; body: string }[] = [
+  { id: 'QUALITY_AWARE', title: 'Quality-aware (recommended)', body: 'Urgent and high-priority tasks go to annotators with the strongest QA record; routine work stays balanced.' },
+  { id: 'BALANCED', title: 'Balanced', body: 'Round-robin across every qualified annotator by remaining capacity. Ignores QA history.' },
+];
 
 export const AllocationsPage: React.FC = () => {
-  const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
-  const [operationalDate, setOperationalDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const { selected, selectedId, campaigns } = useCampaigns();
+  const workerName = useWorkerNames();
   const [allocations, setAllocations] = useState<any[]>([]);
   const [unassignedTaskCount, setUnassignedTaskCount] = useState<number>(0);
   const [lastRun, setLastRun] = useState<any>(null);
+  const [strategy, setStrategy] = useState<Strategy>('QUALITY_AWARE');
+  const [showReleased, setShowReleased] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isActionPending, setIsActionPending] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
-
-  // Modal State for Task Creation
+  const [historyTaskId, setHistoryTaskId] = useState<string | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
   const [taskCountInput, setTaskCountInput] = useState<number>(50);
 
   const loadData = async () => {
+    if (!selectedId) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
-      const campData = await api.getCampaigns();
-      setCampaigns(campData);
-      if (campData.length > 0 && !selectedCampaignId) {
-        setSelectedCampaignId(campData[0].id);
-      }
-
-      if (selectedCampaignId) {
-        const allocData = await api.getCampaignAllocations(selectedCampaignId).catch(() => []);
-        setAllocations(allocData);
-
-        const tasksData = await api.getTasks(selectedCampaignId, 'UNASSIGNED', 1000).catch(() => []);
-        setUnassignedTaskCount(tasksData.length);
-      }
-    } catch (err) {
-      console.error('Failed to load allocations page data', err);
+      const [allocData, tasksData] = await Promise.all([
+        api.getCampaignAllocations(selectedId).catch(() => []),
+        api.getTasks(selectedId, 'UNASSIGNED', 1000).catch(() => []),
+      ]);
+      setAllocations(allocData ?? []);
+      setUnassignedTaskCount((tasksData ?? []).length);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [selectedCampaignId]);
+  useEffect(() => { void loadData(); }, [selectedId]);
 
   const handleTriggerAllocation = async () => {
-    if (!selectedCampaignId) return;
+    if (!selectedId) return;
     setIsActionPending(true);
     setFeedback(null);
     try {
-      const run = await api.triggerAllocationRun({
-        campaign_id: selectedCampaignId,
-        operational_date: operationalDate,
-      });
+      // The server allocates on the campaign's operational date (simulation clock for demos).
+      const run = await api.triggerAllocationRun({ campaign_id: selectedId, strategy });
       setLastRun(run);
       await loadData();
-      setFeedback({ kind: 'success', message: `${run.tasks_allocated} tasks allocated and records refreshed.` });
+      setFeedback({ kind: 'success', message: `${run.tasks_allocated.toLocaleString()} of ${run.tasks_considered.toLocaleString()} tasks allocated for ${formatDate(run.operational_date)}.` });
     } catch (err: any) {
-      console.error('Allocation run failed:', err);
-      setFeedback({ kind: 'error', message: 'Unable to run allocation right now. Please retry.' });
+      setFeedback({ kind: 'error', message: `Allocation did not run: ${err?.message ?? 'please retry.'}` });
     } finally {
       setIsActionPending(false);
     }
@@ -67,239 +67,161 @@ export const AllocationsPage: React.FC = () => {
 
   const handleCreateTasks = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCampaignId) return;
+    if (!selectedId) return;
+    setFeedback(null);
     try {
-      await api.createTaskBatch(selectedCampaignId, { count: taskCountInput });
+      await api.createTaskBatch(selectedId, { count: taskCountInput });
       setIsTaskModalOpen(false);
-      loadData();
+      await loadData();
+      setFeedback({ kind: 'success', message: `${taskCountInput} tasks created and waiting for allocation.` });
     } catch (err: any) {
-      console.error('Failed to create task batch:', err);
+      setFeedback({ kind: 'error', message: `Tasks were not created: ${err?.message ?? 'please retry.'}` });
     }
   };
 
-  const handleReleaseAllocation = async (allocId: string) => {
+  const handleReleaseAllocation = async (allocation: any) => {
+    setFeedback(null);
     try {
-      await api.transitionTaskState(allocId, 'UNASSIGNED', 'MANUAL_RELEASE');
-      loadData();
+      await api.releaseAllocation(allocation.id);
+      await loadData();
+      setFeedback({ kind: 'success', message: `Task returned to the backlog and ${workerName(allocation.worker_id)}’s capacity restored.` });
     } catch (err: any) {
-      console.error('Failed to release allocation:', err);
+      setFeedback({ kind: 'error', message: `Release refused: ${err?.message ?? 'please retry.'}` });
     }
   };
+
+  const visible = allocations.filter(a => showReleased || a.status === 'ACTIVE');
+  const activeCount = allocations.filter(a => a.status === 'ACTIVE').length;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-100">Task Allocation Engine</h1>
-          <p className="text-sm text-slate-400">
-            Deterministic rules-based allocation respecting skill requirements, qualification, and date-scoped capacity.
-          </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setIsTaskModalOpen(true)}
-            className="px-3 py-2 text-xs font-semibold rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
-          >
-            + Create Task Batch
-          </button>
-          <button
-            onClick={handleTriggerAllocation}
-            disabled={!selectedCampaignId || unassignedTaskCount === 0 || isActionPending}
-            className="px-4 py-2 text-xs font-bold rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-sm transition"
-          >
-            ⚡ Trigger Allocation Run
-          </button>
-        </div>
+      <PageHeader
+        eyebrow="Run"
+        title="Task Allocation Engine"
+        description="Assign waiting tasks to annotators who have every required skill, have passed calibration and have capacity on the campaign’s operational date."
+        actions={
+          <>
+            <Button size="sm" onClick={() => setIsTaskModalOpen(true)} disabled={!selectedId}>
+              <Plus className="h-4 w-4" aria-hidden="true" /> Create tasks
+            </Button>
+            <Button variant="primary" onClick={handleTriggerAllocation} disabled={!selectedId || unassignedTaskCount === 0 || isActionPending}>
+              <Zap className="h-4 w-4" aria-hidden="true" /> {isActionPending ? 'Allocating…' : 'Trigger Allocation Run'}
+            </Button>
+          </>
+        }
+      />
+
+      {feedback && <Feedback kind={feedback.kind}>{feedback.message}</Feedback>}
+      {!selectedId && campaigns.length === 0 && !isLoading && <EmptyState title="No campaigns yet">Create a campaign first.</EmptyState>}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Stat label="Waiting for allocation" value={unassignedTaskCount.toLocaleString()} tone={unassignedTaskCount ? 'warn' : 'good'} />
+        <Stat label="Active allocations" value={activeCount.toLocaleString()} />
+        <Stat label="Operational date" value={<span className="text-lg">{formatDate(selected?.operational_date)}</span>} hint={selected?.simulated_clock ? 'Simulation clock' : 'Today (UTC)'} />
       </div>
 
-      {feedback && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`rounded-md border px-4 py-3 text-sm ${
-            feedback.kind === 'success'
-              ? 'bg-emerald-950/40 border-emerald-800 text-emerald-200'
-              : 'bg-rose-950/40 border-rose-800 text-rose-200'
-          }`}
-        >
-          {feedback.message}
-        </div>
-      )}
-
-      {/* Controls Bar */}
-      <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div>
-          <label htmlFor="campaign-select" className="block text-xs font-medium text-slate-400 mb-1">Target Campaign</label>
-          <select
-            id="campaign-select"
-            value={selectedCampaignId}
-            onChange={(e) => setSelectedCampaignId(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
-          >
-            {campaigns.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.task_type})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="operational-date" className="block text-xs font-medium text-slate-400 mb-1">Operational Date</label>
-          <input
-            id="operational-date"
-            type="date"
-            value={operationalDate}
-            onChange={(e) => setOperationalDate(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
-          />
-        </div>
-
-        <div className="flex flex-col justify-center">
-          <span className="text-xs text-slate-400">Unallocated Backlog</span>
-          <span className="text-xl font-bold text-amber-400">{unassignedTaskCount} Tasks</span>
-        </div>
-      </div>
-
-      {/* Last Allocation Run Results */}
-      {lastRun && (
-        <div className="bg-slate-800/60 border border-emerald-900/60 rounded-lg p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-emerald-400">Latest Allocation Run Results</h2>
-            <span className="text-xs text-slate-400">{new Date(lastRun.created_at).toLocaleTimeString()}</span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
-            <div className="bg-slate-900/80 p-2.5 rounded border border-slate-800">
-              <span className="block text-xs text-slate-400">Considered</span>
-              <span className="text-lg font-bold text-slate-200">{lastRun.tasks_considered}</span>
-            </div>
-            <div className="bg-slate-900/80 p-2.5 rounded border border-slate-800">
-              <span className="block text-xs text-slate-400">Allocated</span>
-              <span className="text-lg font-bold text-emerald-400">{lastRun.tasks_allocated}</span>
-            </div>
-            <div className="bg-slate-900/80 p-2.5 rounded border border-slate-800">
-              <span className="block text-xs text-slate-400">Unallocated</span>
-              <span className="text-lg font-bold text-amber-400">{lastRun.tasks_unallocated}</span>
-            </div>
-            <div className="bg-slate-900/80 p-2.5 rounded border border-slate-800">
-              <span className="block text-xs text-slate-400">Workers Used</span>
-              <span className="text-lg font-bold text-slate-200">{lastRun.workers_used}</span>
-            </div>
-            <div className="bg-slate-900/80 p-2.5 rounded border border-slate-800">
-              <span className="block text-xs text-slate-400">Capacity Consumed</span>
-              <span className="text-lg font-bold text-slate-200">{lastRun.capacity_consumed}</span>
-            </div>
-          </div>
-
-          {/* Reason Breakdown */}
-          {lastRun.unallocated_reason_counts && (
-            <div className="mt-2 text-xs text-slate-400 flex flex-wrap gap-2">
-              <span className="font-semibold text-slate-300">Unallocated Reason Breakdown:</span>
-              {Object.entries(lastRun.unallocated_reason_counts as Record<string, number>).map(([reason, count]) => (
-                <span key={reason} className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">
-                  {reason}: <strong className="text-slate-100">{count}</strong>
+      <Card title="Routing strategy" subtitle="How to choose among qualified annotators">
+        <fieldset>
+          <legend className="sr-only">Allocation strategy</legend>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {STRATEGIES.map(option => (
+              <label key={option.id} className={`flex cursor-pointer gap-3 rounded-lg border p-4 transition ${strategy === option.id ? 'border-emerald-600 bg-emerald-950/30' : 'border-slate-800 hover:border-slate-600'}`}>
+                <input type="radio" name="strategy" value={option.id} checked={strategy === option.id} onChange={() => setStrategy(option.id)} className="mt-1 h-4 min-h-0 w-4 accent-emerald-500" />
+                <span>
+                  <span className="block font-medium text-slate-100">{option.title}</span>
+                  <span className="mt-1 block text-sm text-slate-400">{option.body}</span>
                 </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </Card>
+
+      {lastRun && (
+        <Card title="Latest run" subtitle={`${humanize(lastRun.strategy)} · ${formatTime(lastRun.created_at)}`}>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Stat label="Considered" value={lastRun.tasks_considered} />
+            <Stat label="Allocated" value={lastRun.tasks_allocated} tone="good" />
+            <Stat label="Not allocated" value={lastRun.tasks_unallocated} tone={lastRun.tasks_unallocated ? 'warn' : 'neutral'} />
+            <Stat label="Annotators used" value={lastRun.workers_used} />
+          </div>
+          {Object.values(lastRun.unallocated_reason_counts ?? {}).some((n: any) => n > 0) && (
+            <ul className="mt-4 space-y-1 text-sm">
+              {Object.entries(lastRun.unallocated_reason_counts as Record<string, number>).filter(([, n]) => n > 0).map(([reason, count]) => (
+                <li key={reason}><span className="font-medium text-amber-200">{count} × {humanize(reason)}</span><span className="text-slate-400"> — {REASON_EXPLANATIONS[reason] ?? ''}</span></li>
               ))}
-            </div>
+            </ul>
           )}
-        </div>
+        </Card>
       )}
 
-      {/* Active Allocations Table */}
-      <div className="bg-slate-800/60 border border-slate-700 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-200">Active Task Allocations</h2>
-          <span className="text-xs text-slate-400">{allocations.length} Active Records</span>
-        </div>
-
+      <Card
+        title="Allocations"
+        subtitle={`${visible.length} shown`}
+        actions={
+          <label className="flex items-center gap-2 text-xs text-slate-300">
+            <input type="checkbox" checked={showReleased} onChange={e => setShowReleased(e.target.checked)} className="h-4 min-h-0 w-4 accent-emerald-500" />
+            Include released
+          </label>
+        }
+      >
         {isLoading ? (
-          <div className="p-8 text-center text-slate-400 text-sm">Loading allocations...</div>
-        ) : allocations.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 text-sm">
-            No active allocations found for this campaign. Trigger an allocation run above.
-          </div>
+          <p className="text-sm text-slate-400">Loading allocations…</p>
+        ) : visible.length === 0 ? (
+          <EmptyState title="No active allocations">Run allocation to assign the waiting backlog.</EmptyState>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-900/80 text-xs text-slate-400 uppercase tracking-wider">
-                <tr>
-                  <th className="px-4 py-3 font-semibold">Allocation ID</th>
-                  <th className="px-4 py-3 font-semibold">Task ID</th>
-                  <th className="px-4 py-3 font-semibold">Worker ID</th>
-                  <th className="px-4 py-3 font-semibold">Operational Date</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold text-right">Actions</th>
+          <div className="max-h-[520px] overflow-auto" tabIndex={0} role="region" aria-label="Allocations table">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead className="sticky top-0 bg-slate-900 text-xs text-slate-400">
+                <tr className="border-b border-slate-800">
+                  <th className="py-2 pr-4 font-medium">Task</th>
+                  <th className="py-2 pr-4 font-medium">Annotator</th>
+                  <th className="py-2 pr-4 font-medium">Date</th>
+                  <th className="py-2 pr-4 font-medium">Why this annotator</th>
+                  <th className="py-2 pr-4 font-medium">Status</th>
+                  <th className="py-2 text-right font-medium">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700/60">
-                {allocations.map((a) => (
-                  <tr key={a.id} className="hover:bg-slate-700/40">
-                    <td className="px-4 py-3 text-xs font-mono text-slate-400">{a.id.substring(0, 8)}...</td>
-                    <td className="px-4 py-3 font-mono text-slate-200">{a.task_id.substring(0, 8)}...</td>
-                    <td className="px-4 py-3 font-mono text-emerald-400">{a.worker_id.substring(0, 8)}...</td>
-                    <td className="px-4 py-3 text-xs">{a.operational_date}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={a.status} />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleReleaseAllocation(a.id)}
-                        className="px-2.5 py-1 text-xs font-medium rounded bg-rose-950/80 text-rose-300 hover:bg-rose-900 border border-rose-800 transition"
-                      >
-                        Release
-                      </button>
+              <tbody className="divide-y divide-slate-800/70">
+                {visible.slice(0, 300).map((a) => (
+                  <tr key={a.id}>
+                    <td className="py-2.5 pr-4"><button className="font-mono text-xs text-sky-300 underline-offset-2 hover:underline" onClick={() => setHistoryTaskId(a.task_id)}>{a.task_id}</button></td>
+                    <td className="py-2.5 pr-4 text-slate-200">{workerName(a.worker_id)}</td>
+                    <td className="py-2.5 pr-4 text-xs text-slate-400">{a.operational_date}</td>
+                    <td className="max-w-xs py-2.5 pr-4 text-xs text-slate-400">{a.reason ?? '—'}</td>
+                    <td className="py-2.5 pr-4"><StatusBadge status={a.status} /></td>
+                    <td className="py-2.5 text-right">
+                      {a.status === 'ACTIVE' && (
+                        <Button size="sm" variant="ghost" onClick={() => handleReleaseAllocation(a)} title="Only unstarted work can be released" aria-label={`Release ${a.task_id}`}>Release</Button>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            {visible.length > 300 && <p className="mt-2 text-xs text-slate-400">Showing the 300 most recent of {visible.length}.</p>}
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* Modal: Create Task Batch */}
-      <Modal
-        isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
-        title="Create Campaign Task Batch"
-      >
+      <Modal isOpen={isTaskModalOpen} onClose={() => setIsTaskModalOpen(false)} title="Create tasks">
         <form onSubmit={handleCreateTasks} className="space-y-4">
           <div>
-            <label htmlFor="task-count" className="block text-xs font-medium text-slate-400 mb-1">Batch Count</label>
+            <label htmlFor="task-count" className="mb-1 block text-sm font-medium text-slate-300">How many tasks?</label>
             <input
-              id="task-count"
-              type="number"
-              min="1"
-              max="2000"
-              value={taskCountInput}
+              id="task-count" type="number" min="1" max="5000" required value={taskCountInput}
               onChange={(e) => setTaskCountInput(Number(e.target.value))}
-              className="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
-              required
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
             />
-            <p className="text-xs text-slate-500 mt-1">
-              Tasks will inherit campaign defaults (task type, required skill tags, priority).
-            </p>
+            <p className="mt-1 text-xs text-slate-400">New tasks inherit the campaign’s task type, skills and priority. The total cannot exceed the campaign volume.</p>
           </div>
-
-          <div className="flex justify-end space-x-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setIsTaskModalOpen(false)}
-              className="px-3 py-1.5 text-xs rounded bg-slate-800 text-slate-300 hover:bg-slate-700"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-1.5 text-xs font-semibold rounded bg-emerald-600 text-white hover:bg-emerald-500"
-            >
-              Create Tasks
-            </button>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button onClick={() => setIsTaskModalOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="primary">Create tasks</Button>
           </div>
         </form>
       </Modal>
+      <TaskHistoryDialog taskId={historyTaskId} onClose={() => setHistoryTaskId(null)} />
     </div>
   );
 };

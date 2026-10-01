@@ -5,10 +5,12 @@ from app.models.campaign import Campaign
 from app.models.worker import Worker, WorkerQualification
 from app.schemas.calibration import CalibrationResultCreate, CalibrationRoundCreate
 from app.services.audit_service import log_audit
+from app.services.transaction import atomic
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 
+@atomic
 def create_calibration_round(db: Session, data: CalibrationRoundCreate) -> CalibrationRound:
     campaign = db.query(Campaign).filter(Campaign.id == data.campaign_id).first()
     if not campaign:
@@ -26,7 +28,7 @@ def create_calibration_round(db: Session, data: CalibrationRoundCreate) -> Calib
         status="ACTIVE",
     )
     db.add(round_obj)
-    db.commit()
+    db.flush()
     db.refresh(round_obj)
 
     log_audit(
@@ -56,6 +58,7 @@ def list_calibration_rounds(db: Session, campaign_id: str | None = None) -> list
     return list(query.order_by(CalibrationRound.created_at.desc()).all())
 
 
+@atomic
 def record_calibration_result(
     db: Session, round_id: str, data: CalibrationResultCreate
 ) -> CalibrationResult:
@@ -129,7 +132,7 @@ def record_calibration_result(
         )
         db.add(qual)
 
-    db.commit()
+    db.flush()
     db.refresh(result)
 
     log_audit(

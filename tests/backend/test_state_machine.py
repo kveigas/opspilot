@@ -1,4 +1,5 @@
 from datetime import date
+
 from app.models.campaign import Campaign
 from app.models.task import Task
 

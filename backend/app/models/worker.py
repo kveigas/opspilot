@@ -3,7 +3,8 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.database import Base
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
+from app.models.types import UTCDateTime
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -21,7 +22,7 @@ class Worker(Base):
     default_max_daily_capacity: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     availability: Mapped[str] = mapped_column(String(20), nullable=False, default="AVAILABLE")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     skills: Mapped[list["WorkerSkill"]] = relationship("WorkerSkill", back_populates="worker", cascade="all, delete-orphan")
     qualifications: Mapped[list["WorkerQualification"]] = relationship(
@@ -53,6 +54,6 @@ class WorkerQualification(Base):
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="NOT_STARTED")
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     attempts_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    qualified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    qualified_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     worker: Mapped["Worker"] = relationship("Worker", back_populates="qualifications")

@@ -18,8 +18,8 @@ def get_today_manager_cockpit(db: Session) -> dict:
     qa_review_backlog_summary = []
 
     for c in campaigns:
-        sla = evaluate_campaign_sla(db, c.id)
-        delivery = evaluate_delivery_readiness(db, c.id)
+        sla = evaluate_campaign_sla(db, c.id, record_audit=False)
+        delivery = evaluate_delivery_readiness(db, c.id, record_audit=False)
         unallocated_count = db.query(Task).filter(Task.campaign_id == c.id, Task.state == "UNASSIGNED").count()
         submitted_count = db.query(Task).filter(Task.campaign_id == c.id, Task.state == "SUBMITTED").count()
         in_review_count = db.query(Task).filter(Task.campaign_id == c.id, Task.state == "IN_REVIEW").count()
@@ -75,7 +75,6 @@ def get_today_manager_cockpit(db: Session) -> dict:
     critical_escalations_raw = (
         db.query(Escalation)
         .filter(
-            Escalation.severity == "CRITICAL",
             Escalation.status.in_(["OPEN", "INVESTIGATING", "WAITING"]),
         )
         .order_by(Escalation.created_at.desc())
@@ -151,7 +150,7 @@ def get_today_manager_cockpit(db: Session) -> dict:
         "campaign_count": len(campaigns),
         "critical_campaigns": critical_campaigns,
         "at_risk_campaigns": at_risk_campaigns,
-        "critical_escalations": critical_escalations,
+        "critical_escalations": [e for e in critical_escalations if e["severity"] == "CRITICAL"],
         "open_escalations": critical_escalations,
         "review_backlogs": review_backlogs,
         "qa_review_backlog_summary": qa_review_backlog_summary,

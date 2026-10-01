@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -14,7 +15,7 @@ if str(backend_dir) not in sys.path:
 os.environ["DATABASE_PATH"] = ":memory:"
 os.environ["DATABASE_URL"] = "sqlite://"
 
-import app.models  # noqa: F401
+import app.models
 from app.database import Base, get_db
 from app.main import app
 

@@ -1,10 +1,11 @@
 import time
 from datetime import date
+
 from app.models.campaign import Campaign
-from app.models.worker import Worker, WorkerSkill
 from app.models.task import Task
-from app.services.sla_service import evaluate_campaign_sla
+from app.models.worker import Worker, WorkerSkill
 from app.services.delivery_service import evaluate_delivery_readiness
+from app.services.sla_service import evaluate_campaign_sla
 
 
 def test_phase3_scale_performance_benchmark(db_session):
@@ -63,7 +64,7 @@ def test_phase3_scale_performance_benchmark(db_session):
     delivery_result = evaluate_delivery_readiness(db_session, campaign.id)
     t_deliv_ms = (time.perf_counter() - t0) * 1000.0
 
-    print(f"\n--- Phase 3 Scale Benchmarks (2,000 tasks / 16 workers) ---")
+    print("\n--- Phase 3 Scale Benchmarks (2,000 tasks / 16 workers) ---")
     print(f"SLA Evaluation Time: {t_sla_ms:.2f} ms")
     print(f"Delivery Readiness Time: {t_deliv_ms:.2f} ms")
 

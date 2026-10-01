@@ -1,8 +1,9 @@
 from datetime import date
+
 from app.models.campaign import Campaign
-from app.models.worker import Worker
-from app.models.task import Task
 from app.models.escalation import Escalation
+from app.models.task import Task
+from app.models.worker import Worker
 
 
 def test_rework_attempts_and_max_threshold_escalation_invariants(client, db_session):

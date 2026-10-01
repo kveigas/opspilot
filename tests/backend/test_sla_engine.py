@@ -1,7 +1,8 @@
 from datetime import date
+
 from app.models.campaign import Campaign
-from app.models.worker import Worker, WorkerSkill
 from app.models.task import Task
+from app.models.worker import Worker, WorkerSkill
 
 
 def test_sla_engine_boundaries_overrides_and_multi_reason(client, db_session):

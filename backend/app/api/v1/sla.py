@@ -15,7 +15,7 @@ def api_get_campaign_sla(
     operational_date: date | None = Query(None, alias="date"),
     db: Session = Depends(get_db),
 ):
-    sla = evaluate_campaign_sla(db, campaign_id, operational_date=operational_date)
+    sla = evaluate_campaign_sla(db, campaign_id, operational_date=operational_date, record_audit=False)
     return SLAResponse(
         campaign_id=sla["campaign_id"],
         status=sla["status"],
@@ -29,4 +29,6 @@ def api_get_campaign_sla(
         open_critical_escalations=sla["open_critical_escalations"],
         reason_codes=sla["reason_codes"],
         evaluated_at=sla["evaluated_at"],
+        operational_date=sla["operational_date"],
+        simulated_clock=sla["simulated_clock"],
     )

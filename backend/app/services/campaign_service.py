@@ -2,10 +2,12 @@
 from app.models.campaign import Campaign, CampaignSkill
 from app.schemas.campaign import CampaignCreate, CampaignUpdate
 from app.services.audit_service import log_audit
+from app.services.transaction import atomic
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 
+@atomic
 def create_campaign(db: Session, data: CampaignCreate) -> Campaign:
     existing = db.query(Campaign).filter(Campaign.name == data.name).first()
     if existing:
@@ -22,6 +24,7 @@ def create_campaign(db: Session, data: CampaignCreate) -> Campaign:
         total_volume=data.total_volume,
         target_quality_pct=data.target_quality_pct,
         review_sampling_pct=data.review_sampling_pct,
+        qa_policy=data.qa_policy,
         target_daily_throughput=data.target_daily_throughput,
         start_date=data.start_date,
         due_date=data.due_date,
@@ -36,7 +39,7 @@ def create_campaign(db: Session, data: CampaignCreate) -> Campaign:
     for skill_tag in data.required_skills:
         db.add(CampaignSkill(campaign_id=str(campaign.id), skill_tag=skill_tag))
 
-    db.commit()
+    db.flush()
     db.refresh(campaign)
 
     log_audit(
@@ -66,6 +69,7 @@ def list_campaigns(db: Session, status_filter: str | None = None) -> list[Campai
     return list(query.order_by(Campaign.created_at.desc()).all())
 
 
+@atomic
 def update_campaign(db: Session, campaign_id: str, data: CampaignUpdate) -> Campaign:
     campaign = get_campaign(db, campaign_id)
     update_data = data.model_dump(exclude_unset=True)
@@ -73,7 +77,7 @@ def update_campaign(db: Session, campaign_id: str, data: CampaignUpdate) -> Camp
     for key, value in update_data.items():
         setattr(campaign, key, value)
 
-    db.commit()
+    db.flush()
     db.refresh(campaign)
 
     log_audit(

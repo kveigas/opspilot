@@ -4,8 +4,11 @@ import { Worker, WorkerRole, WorkerAvailability } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Plus, Users, Calendar } from 'lucide-react';
+import { useCampaigns } from '../state/CampaignContext';
+import { invalidateWorkerNames } from '../state/useWorkerNames';
 
 export const WorkforcePage: React.FC = () => {
+  const { selected } = useCampaigns();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -72,6 +75,7 @@ export const WorkforcePage: React.FC = () => {
       });
 
       setIsCreateModalOpen(false);
+      invalidateWorkerNames();
       loadWorkers();
     } catch (err: any) {
       setError(err.message || 'Failed to create worker');
@@ -81,7 +85,8 @@ export const WorkforcePage: React.FC = () => {
   const openCapacityEditor = async (w: Worker) => {
     setSelectedWorker(w);
     try {
-      const c = await api.getCapacity(w.id, capForm.capacity_date);
+      // Default to the active campaign's operational date (simulation clock for the demo).
+      const c = await api.getCapacity(w.id, selected?.operational_date ?? capForm.capacity_date);
       setCapForm({
         capacity_date: c.capacity_date,
         max_daily_capacity: c.max_daily_capacity,

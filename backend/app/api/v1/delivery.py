@@ -9,7 +9,7 @@ router = APIRouter(prefix="/campaigns", tags=["Delivery Readiness"])
 
 @router.get("/{campaign_id}/delivery-readiness", response_model=DeliveryReadinessResponse)
 def api_get_delivery_readiness(campaign_id: str, db: Session = Depends(get_db)):
-    deliv = evaluate_delivery_readiness(db, campaign_id)
+    deliv = evaluate_delivery_readiness(db, campaign_id, record_audit=False)
     return DeliveryReadinessResponse(
         campaign_id=deliv["campaign_id"],
         status=deliv["status"],

@@ -34,3 +34,5 @@ class TaskResponse(BaseModel):
     submitted_at: datetime | None = None
     completed_at: datetime | None = None
     required_skills: list[str] = Field(default_factory=list)
+    qa_sample_probability: float | None = None
+    qa_sampling_tier: str | None = None

@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
+import { CalendarClock, FastForward, HelpCircle, RotateCcw } from 'lucide-react';
 import { api } from '../api/client';
+import { useDemoAction } from '../api/demoActions';
+import { Modal } from './Modal';
+import { Button } from './ui';
+import { ROUTES } from '../routes';
+import { useCampaigns } from '../state/CampaignContext';
+import { formatDate } from '../lib/format';
 
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onRefresh?: () => void;
+  onHelp?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefresh }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefresh, onHelp }) => {
+  const demoAction = useDemoAction();
+  const { campaigns, selectedId, selected, select } = useCampaigns();
+  const [confirmReset, setConfirmReset] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState<boolean>(false);
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
@@ -16,9 +27,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefre
     setIsAdvancing(true);
     setFeedback(null);
     try {
-      await api.advanceDemoWorkday();
-      if (onRefresh) onRefresh();
-      setFeedback({ kind: 'success', message: 'Workday advanced and the current view was refreshed.' });
+      const result = await api.advanceDemoWorkday();
+      onRefresh?.();
+      const tiers = result?.qa_sampled_by_tier ?? {};
+      const atRisk = tiers.AT_RISK ? ` (${tiers.AT_RISK} from at-risk annotators)` : '';
+      setFeedback({
+        kind: 'success',
+        message: result?.worked_date
+          ? `Workday ${formatDate(result.worked_date)} complete: ${result.advanced_to_submitted} tasks submitted, ${result.qa_sampled} sampled for QA${atRisk}, ${result.qa_rework} sent back for rework. Now ${formatDate(result.operational_date)}.`
+          : 'Workday advanced and the current view was refreshed.',
+      });
     } catch (err: any) {
       console.error('Failed to advance demo workday:', err);
       setFeedback({ kind: 'error', message: 'Unable to advance the demo right now. Please retry.' });
@@ -28,11 +46,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefre
   };
 
   const handleResetDemo = async () => {
+    setConfirmReset(false);
     setIsResetting(true);
     setFeedback(null);
     try {
       await api.resetDemo();
-      if (onRefresh) onRefresh();
+      onRefresh?.();
       setFeedback({ kind: 'success', message: 'Demo reset to the deterministic baseline.' });
     } catch (err: any) {
       console.error('Failed to reset demo:', err);
@@ -42,94 +61,103 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onRefre
     }
   };
 
-  const tabs = [
-    { id: 'today', label: 'Today', enabled: true },
-    { id: 'campaigns', label: 'Campaigns', enabled: true },
-    { id: 'workforce', label: 'Workforce', enabled: true },
-    { id: 'calibration', label: 'Calibration', enabled: true },
-    { id: 'allocations', label: 'Allocations', enabled: true },
-    { id: 'execution', label: 'Execution', enabled: true },
-    { id: 'qa', label: 'QA & Escalations', enabled: true },
-    { id: 'delivery', label: 'Delivery', enabled: true },
-  ];
+  const busy = isAdvancing || isResetting || Boolean(demoAction);
+  const groups = Array.from(new Set(ROUTES.map(r => r.group)));
 
   return (
     <>
-    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row items-center justify-between py-2 md:h-16 gap-2">
-          {/* Brand & Demo Provenance */}
-          <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-700 flex items-center justify-center font-bold text-white shadow-lg shadow-emerald-950/60">
+      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/95 backdrop-blur supports-[backdrop-filter]:bg-slate-950/80">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700 text-sm font-bold text-white" aria-hidden="true">
                 OP
               </div>
-              <div>
-                <span className="font-bold text-lg text-slate-100 tracking-tight">OpsPilot</span>
-                <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80">
-                  Phase 4 Public Demo
-                </span>
+              <div className="leading-tight">
+                <span className="block text-base font-semibold text-slate-50">OpsPilot</span>
+                <span className="block text-xs text-slate-400">Human-data campaign operations</span>
               </div>
             </div>
 
-            {/* Quick Demo Controls */}
-            <div className="flex items-center space-x-2">
-              <span className="hidden lg:inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950/60 text-amber-300 border border-amber-800">
-                SYNTHETIC DEMO DATA
-              </span>
-              <button
-                onClick={handleAdvanceWorkday}
-                disabled={isAdvancing}
-                className="px-2.5 py-1 text-xs font-bold rounded bg-emerald-800 hover:bg-emerald-700 text-white transition border border-emerald-700"
-              >
-                {isAdvancing ? 'Advancing...' : '⚡ Advance Workday'}
-              </button>
-              <button
-                onClick={handleResetDemo}
-                disabled={isResetting}
-                className="px-2 py-1 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition border border-slate-700"
-              >
-                {isResetting ? 'Resetting...' : '🔄 Reset'}
-              </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {campaigns.length > 0 && (
+                <label className="flex items-center gap-2 text-xs text-slate-400">
+                  <span className="hidden md:inline">Campaign</span>
+                  <select
+                    aria-label="Active campaign"
+                    value={selectedId}
+                    onChange={(e) => select(e.target.value)}
+                    className="max-w-[220px] rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100"
+                  >
+                    {campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </label>
+              )}
+              {selected?.simulated_clock && (
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-800/70 bg-amber-950/40 px-2.5 py-1.5 text-xs text-amber-200" title="Synthetic demo campaign running on a simulation clock">
+                  <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Simulated day · {formatDate(selected.operational_date)}</span>
+                </span>
+              )}
+              <Button variant="primary" size="sm" onClick={handleAdvanceWorkday} disabled={busy}>
+                <FastForward className="h-4 w-4" aria-hidden="true" />
+                {isAdvancing ? 'Advancing…' : 'Advance workday'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfirmReset(true)} disabled={busy}>
+                <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                {isResetting ? 'Resetting…' : 'Reset demo'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onHelp} aria-label="Shortcuts and glossary">
+                <HelpCircle className="h-4 w-4" aria-hidden="true" />
+              </Button>
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex space-x-1 sm:space-x-2 overflow-x-auto py-1 w-full md:w-auto" aria-label="Main Navigation">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-3 py-2.5 sm:py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors whitespace-nowrap ${
-                    isActive
-                      ? 'bg-emerald-700 text-white shadow-sm'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                  }`}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+          <nav className="-mx-1 flex gap-1 overflow-x-auto pb-2" aria-label="Main navigation">
+            {groups.map((group, index) => (
+              <div key={group} className="flex items-center gap-1">
+                {index > 0 && <span className="mx-1 h-5 w-px bg-slate-800" aria-hidden="true" />}
+                {ROUTES.filter(r => r.group === group).map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      title={`${group} · shortcut ${tab.shortcut}`}
+                      className={`whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors ${
+                        isActive ? 'bg-emerald-700 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      }`}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
         </div>
-      </div>
-    </header>
-    {feedback && (
-      <div
-        role="status"
-        aria-live="polite"
-        className={`px-4 py-2 text-center text-xs border-b ${
-          feedback.kind === 'success'
-            ? 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
-            : 'bg-rose-950/80 border-rose-800 text-rose-200'
-        }`}
-      >
-        {feedback.message}
-      </div>
-    )}
+      </header>
+      <Modal isOpen={confirmReset} onClose={() => setConfirmReset(false)} title="Reset synthetic demo?">
+        <p className="leading-relaxed text-slate-300">This replaces the demo campaign, tasks, workers, QA history and the simulation clock with the original baseline. Your progress in this shared demo will be lost.</p>
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <Button onClick={() => setConfirmReset(false)}>Keep my progress</Button>
+          <Button variant="danger" disabled={Boolean(demoAction)} onClick={handleResetDemo}>Confirm reset</Button>
+        </div>
+      </Modal>
+      {feedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`border-b px-4 py-2 text-center text-sm ${
+            feedback.kind === 'success'
+              ? 'border-emerald-800 bg-emerald-950/80 text-emerald-100'
+              : 'border-rose-800 bg-rose-950/80 text-rose-100'
+          }`}
+        >
+          {feedback.message}
+        </div>
+      )}
     </>
   );
 };

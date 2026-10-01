@@ -3,10 +3,12 @@ from app.models.allocation import Allocation
 from app.models.worker import Worker, WorkerSkill
 from app.schemas.worker import WorkerCreate, WorkerUpdate
 from app.services.audit_service import log_audit
+from app.services.transaction import atomic
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 
+@atomic
 def create_worker(db: Session, data: WorkerCreate) -> Worker:
     existing = db.query(Worker).filter(Worker.email == data.email).first()
     if existing:
@@ -30,7 +32,7 @@ def create_worker(db: Session, data: WorkerCreate) -> Worker:
     for tag in data.skills:
         db.add(WorkerSkill(worker_id=str(worker.id), skill_tag=tag))
 
-    db.commit()
+    db.flush()
     db.refresh(worker)
 
     log_audit(
@@ -69,6 +71,7 @@ def list_workers(
     return list(query.order_by(Worker.name.asc()).all())
 
 
+@atomic
 def update_worker(db: Session, worker_id: str, data: WorkerUpdate) -> Worker:
     worker = get_worker(db, worker_id)
     update_dict = data.model_dump(exclude_unset=True)
@@ -109,7 +112,7 @@ def update_worker(db: Session, worker_id: str, data: WorkerUpdate) -> Worker:
         for tag in skills_to_update:
             db.add(WorkerSkill(worker_id=str(worker.id), skill_tag=tag))
 
-    db.commit()
+    db.flush()
     db.refresh(worker)
 
     log_audit(

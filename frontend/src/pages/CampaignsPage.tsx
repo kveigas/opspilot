@@ -4,8 +4,10 @@ import { Campaign, CampaignPriority } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Plus, Target, Calendar, CheckCircle2, XCircle } from 'lucide-react';
+import { useCampaigns } from '../state/CampaignContext';
 
 export const CampaignsPage: React.FC = () => {
+  const { refresh: refreshShared } = useCampaigns();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,6 +21,7 @@ export const CampaignsPage: React.FC = () => {
     total_volume: number;
     target_quality_pct: number;
     review_sampling_pct: number;
+    qa_policy: 'FLAT' | 'ADAPTIVE';
     target_daily_throughput: number;
     start_date: string;
     due_date: string;
@@ -35,6 +38,7 @@ export const CampaignsPage: React.FC = () => {
     total_volume: 1000,
     target_quality_pct: 95.0,
     review_sampling_pct: 20.0,
+    qa_policy: 'ADAPTIVE',
     target_daily_throughput: 100,
     start_date: '2026-08-12',
     due_date: '2026-08-25',
@@ -89,6 +93,7 @@ export const CampaignsPage: React.FC = () => {
 
       setIsModalOpen(false);
       loadCampaigns();
+      void refreshShared();
     } catch (err: any) {
       setError(err.message || 'Failed to create campaign');
     }
@@ -124,7 +129,7 @@ export const CampaignsPage: React.FC = () => {
         </div>
       ) : (
         <div className="bg-ops-card border border-ops-border rounded-xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Campaign table">
             <table className="w-full text-left text-sm">
               <thead className="bg-ops-bg/80 text-ops-muted uppercase text-xs border-b border-ops-border">
                 <tr>
@@ -151,7 +156,7 @@ export const CampaignsPage: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="font-semibold text-ops-text">{c.total_volume.toLocaleString()} tasks</div>
                       <div className="text-xs text-ops-muted">
-                        Target: {c.target_daily_throughput}/day • Sampling: {c.review_sampling_pct}%
+                        Target: {c.target_daily_throughput}/day • QA: {c.qa_policy === 'ADAPTIVE' ? 'adaptive' : 'flat'} from {c.review_sampling_pct}%
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -189,10 +194,11 @@ export const CampaignsPage: React.FC = () => {
             <div className="p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-lg text-sm">{error}</div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold text-ops-muted mb-1">Campaign Name</label>
+              <label htmlFor="camp-name" className="block text-xs font-semibold text-ops-muted mb-1">Campaign Name</label>
               <input
+                id="camp-name"
                 type="text"
                 required
                 value={form.name}
@@ -202,8 +208,9 @@ export const CampaignsPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ops-muted mb-1">Client Name</label>
+              <label htmlFor="camp-client" className="block text-xs font-semibold text-ops-muted mb-1">Client Name</label>
               <input
+                id="camp-client"
                 type="text"
                 required
                 value={form.client_name}
@@ -214,10 +221,11 @@ export const CampaignsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold text-ops-muted mb-1">Task Type</label>
+              <label htmlFor="camp-type" className="block text-xs font-semibold text-ops-muted mb-1">Task Type</label>
               <select
+                id="camp-type"
                 value={form.task_type}
                 onChange={(e) => setForm({ ...form, task_type: e.target.value })}
                 className="w-full px-3 py-2 bg-ops-bg border border-ops-border rounded-lg text-sm text-ops-text focus:outline-none focus:border-ops-primary"
@@ -229,8 +237,9 @@ export const CampaignsPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ops-muted mb-1">Priority</label>
+              <label htmlFor="camp-priority" className="block text-xs font-semibold text-ops-muted mb-1">Priority</label>
               <select
+                id="camp-priority"
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value as CampaignPriority })}
                 className="w-full px-3 py-2 bg-ops-bg border border-ops-border rounded-lg text-sm text-ops-text focus:outline-none focus:border-ops-primary"
@@ -243,10 +252,11 @@ export const CampaignsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label className="block text-xs font-semibold text-ops-muted mb-1">Total Volume</label>
+              <label htmlFor="camp-volume" className="block text-xs font-semibold text-ops-muted mb-1">Total Volume</label>
               <input
+                id="camp-volume"
                 type="number"
                 min="1"
                 required
@@ -256,8 +266,9 @@ export const CampaignsPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ops-muted mb-1">Target Daily Rate</label>
+              <label htmlFor="camp-rate" className="block text-xs font-semibold text-ops-muted mb-1">Target Daily Rate</label>
               <input
+                id="camp-rate"
                 type="number"
                 min="1"
                 required
@@ -267,8 +278,9 @@ export const CampaignsPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ops-muted mb-1">QA Sampling %</label>
+              <label htmlFor="camp-sampling" className="block text-xs font-semibold text-ops-muted mb-1">QA Sampling %</label>
               <input
+                id="camp-sampling"
                 type="number"
                 min="0"
                 max="100"
@@ -280,10 +292,24 @@ export const CampaignsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <fieldset className="space-y-2">
+            <legend className="block text-xs font-semibold text-ops-muted mb-1">QA sampling policy</legend>
+            {([
+              ['ADAPTIVE', 'Adaptive (recommended)', 'Review effort follows each annotator’s QA record: proven annotators are spot-checked, new or struggling annotators are reviewed heavily. The sampling % is the base rate.'],
+              ['FLAT', 'Flat', 'Every annotator is reviewed at the same sampling %.'],
+            ] as const).map(([value, title, body]) => (
+              <label key={value} className={`flex cursor-pointer gap-3 rounded-lg border p-3 ${form.qa_policy === value ? 'border-emerald-600 bg-emerald-950/30' : 'border-ops-border'}`}>
+                <input type="radio" name="qa_policy" value={value} checked={form.qa_policy === value} onChange={() => setForm({ ...form, qa_policy: value })} className="mt-1 h-4 min-h-0 w-4 accent-emerald-500" />
+                <span><span className="block text-sm font-medium text-ops-text">{title}</span><span className="block text-xs text-ops-muted">{body}</span></span>
+              </label>
+            ))}
+          </fieldset>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold text-ops-muted mb-1">Start Date</label>
+              <label htmlFor="camp-start" className="block text-xs font-semibold text-ops-muted mb-1">Start Date</label>
               <input
+                id="camp-start"
                 type="date"
                 required
                 value={form.start_date}
@@ -292,8 +318,9 @@ export const CampaignsPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ops-muted mb-1">Due Date</label>
+              <label htmlFor="camp-due" className="block text-xs font-semibold text-ops-muted mb-1">Due Date</label>
               <input
+                id="camp-due"
                 type="date"
                 required
                 value={form.due_date}
@@ -304,8 +331,9 @@ export const CampaignsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ops-muted mb-1">Required Skill Tags (comma-separated)</label>
+            <label htmlFor="camp-skills" className="block text-xs font-semibold text-ops-muted mb-1">Required Skill Tags (comma-separated)</label>
             <input
+                id="camp-skills"
               type="text"
               value={form.skillsInput}
               onChange={(e) => setForm({ ...form, skillsInput: e.target.value })}

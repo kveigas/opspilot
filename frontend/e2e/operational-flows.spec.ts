@@ -72,8 +72,8 @@ test.describe('Phase 3 Operational Control E2E Flows', () => {
 
     // Verify task completed in UI
     await page.goto('/');
-    await page.getByRole('button', { name: 'Execution', exact: true }).click();
-    await expect(page.getByText('Production Execution Operations')).toBeVisible();
+    await page.getByRole('button', { name: 'Execute', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Production execution' })).toBeVisible();
   });
 
   test('FLOW 2: submit -> review -> rework -> resubmit -> accept', async ({ request }) => {

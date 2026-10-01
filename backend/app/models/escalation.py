@@ -3,7 +3,8 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Optional
 
 from app.database import Base
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from app.models.types import UTCDateTime
+from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -28,9 +29,9 @@ class Escalation(Base):
     blocker: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     resolution: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
-    due_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=lambda: datetime.now(UTC))
+    due_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     campaign: Mapped["Campaign"] = relationship("Campaign")
     task: Mapped[Optional["Task"]] = relationship("Task")

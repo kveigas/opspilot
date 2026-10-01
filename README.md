@@ -1,177 +1,136 @@
-# OpsPilot — Human Data Campaign Operations Control System
+# OpsPilot — Human Data Campaign Operations
 
-[![OpsPilot Release](https://img.shields.io/badge/Release-v1.0.0--rc1-emerald.svg)](https://github.com/kveigas/opspilot)
-[![Deterministic Engine](https://img.shields.io/badge/Engine-100%25_Deterministic-blue.svg)](https://github.com/kveigas/opspilot)
-[![Accessibility](https://img.shields.io/badge/WCAG_2.1_AA-Pass-green.svg)](https://github.com/kveigas/opspilot)
-[![Coverage](https://img.shields.io/badge/Backend_Coverage-92%25-brightgreen.svg)](https://github.com/kveigas/opspilot)
+[![Release](https://img.shields.io/badge/Release-v1.0.0--rc1-emerald.svg)](https://github.com/kveigas/opspilot)
+[![Backend coverage](https://img.shields.io/badge/Backend_coverage-94%25-brightgreen.svg)](#verification)
+[![Accessibility](https://img.shields.io/badge/Accessibility-automated_axe_checks-blue.svg)](#verification)
 
-OpsPilot is a production-grade, rules-based operational control system designed for **AI Data Operations Managers**, **Human Data Operations Leads**, and **AI Evaluation Program Managers**. It manages the end-to-end lifecycle of high-stakes human data annotation and evaluation campaigns — from intake and workforce calibration through deterministic allocation, 10-state task execution, QA review sampling, SLA risk monitoring, and delivery gate validation.
+OpsPilot is an operations cockpit for teams that run human-data programmes (annotation, RLHF preference ranking, AI evaluation). It covers the daily loop a campaign manager owns: intake, qualification, allocation, production, QA, escalations and delivery — with every decision explained and audited.
 
-### 🌐 Live Public Deployment
+It is a **portfolio prototype running on synthetic data**. Authentication, tenant isolation, production concurrency and hosted backups are not implemented; do not use it for real client data.
 
-- 🚀 **Live Public Demo**: [https://kveigas.github.io/opspilot/](https://kveigas.github.io/opspilot/)
-- ⚙️ **Live API Base**: [https://opspilot-c5y3.onrender.com](https://opspilot-c5y3.onrender.com)
-- 📖 **Interactive API Docs**: [https://opspilot-c5y3.onrender.com/docs](https://opspilot-c5y3.onrender.com/docs)
+- Live demo: https://kveigas.github.io/opspilot/ · API: https://opspilot-c5y3.onrender.com (`/docs` for OpenAPI)
+- Latest local changes are documented in [docs/TECHNICAL_REASSESSMENT.md](docs/TECHNICAL_REASSESSMENT.md) and have not been deployed yet.
 
 ---
 
-## 🎯 Core Operational Purpose
+## What it does
 
-AI and RLHF (Reinforcement Learning from Human Feedback) data campaigns require rigorous operational governance. OpsPilot provides deterministic answers to the six fundamental questions of human data operations:
+| Step | What OpsPilot provides |
+| --- | --- |
+| **Today** | A decision brief: the next best action, SLA reasons in plain language, a completion forecast and delivered-quality outlook. |
+| **Set up** | Campaigns (volume, quality target, QA policy), workforce skills and date-scoped capacity, calibration rounds that gate eligibility. |
+| **Allocate** | Assigns work only to annotators with every required skill, a passed calibration and capacity on the campaign's operational date. *Quality-aware routing* sends urgent/high-priority work to annotators with the strongest QA record; each allocation records why. |
+| **Execute** | A 10-state task machine that rejects invalid transitions; a per-task history view (state, sampling design, reviews, allocations, audit trail). |
+| **QA review** | Keyboard-first review queue (J/K, A/R/B/E, H), escalation lifecycle with recorded decisions, rework limits (3 attempts, then escalation). |
+| **Quality insights** | Annotator trust tiers with credible intervals, design-weighted quality estimates, review effort versus a flat policy, and a Monte Carlo completion forecast. |
+| **Delivery** | Five mandatory gates, each with evidence and a "fix this" link. |
 
-1. **Intake & Scope**: What volume of work is coming in, and what quality and throughput thresholds are contracted?
-2. **Qualification**: Who in the workforce is qualified to perform work in specific domains or languages?
-3. **Allocation**: How should unallocated task backlogs be distributed fairly and deterministically based on date-scoped capacity?
-4. **Execution Control**: What is the real-time execution state of every task, and how are rework attempts enforced?
-5. **Risk Isolation**: Where are SLA bottlenecks, open critical escalations, or quality failures developing?
-6. **Delivery Verification**: Are we operationally ready to ship dataset deliverables to the client?
+### Adaptive, trust-based QA
+
+Reviewing the same share of everyone's work wastes effort on proven annotators and under-checks new or struggling ones. With the **Adaptive** policy:
+
+1. Each annotator's first-pass acceptance has a Beta(1,1) prior updated with QA verdicts on the campaign.
+2. The posterior probability of meeting the quality target sets a tier: **Trusted** (≥80%) spot-checked at 5%, **Standard** at the base rate, **Probation** (<8 verdicts) at 50%, **At risk** (<20%) reviewed in full.
+3. Tasks are sampled independently at their tier's rate, and each task's inclusion probability is stored, so campaign quality is estimated with inverse-probability (Hájek) weights rather than being biased by the heavier review of weak annotators.
+4. Delivered accuracy assumes reviewed tasks are corrected by rework and unreviewed tasks carry their annotator's estimated error rate.
+
+**Evidence** ([scripts/benchmark_adaptive_qa.py](scripts/benchmark_adaptive_qa.py), [docs/evidence/](docs/evidence/ADAPTIVE_QA.md)): across 40 synthetic workforces (12 annotators, a quarter of them weak, 10 days, paired outcomes), adaptive sampling shipped **1.8%** undetected errors versus **3.5%** for flat sampling *with the same number of reviews* (better in 40/40 worlds). To match adaptive quality, flat sampling had to review **71%** of tasks versus **41%** — **43% fewer reviews**. These are synthetic worlds with assumed accuracy distributions; they are evidence about the policy, not a measurement of a real team.
+
+### Operational safeguards
+
+- **One transaction per business operation** — tasks, reviews, capacity and their audit records commit or roll back together.
+- **Idempotency keys** — every mutating request carries an `Idempotency-Key`; the server replays the stored result for a repeated key, so the client can safely retry after timeouts.
+- **Simulation clock** — the demo campaign runs on its own operational date, so fixed demo dates never "age" into a permanently overdue state. Real campaigns use the current date.
+- **Timezone-correct timestamps** — the API always returns UTC offsets.
+- **Non-destructive demo bootstrap** — seeding only happens after a successful, genuinely empty response; resets require confirmation.
 
 ---
 
-## 🏛️ System Architecture & Deterministic Engines
+## Demo walkthrough (about 3 minutes)
 
-OpsPilot is built on a clean split between a **Python / FastAPI / SQLAlchemy** backend and a **React / TypeScript / Tailwind CSS** frontend. All operational logic is 100% rules-based, persistent, and verifiable.
+1. Open the app. An empty database seeds the synthetic campaign *Multilingual AI Response Evaluation* (2,000 tasks, 16 workers, 324 historical QA verdicts). The header shows the simulated day.
+2. **Today** recommends the next action: resolve the critical guideline escalation. Record the decision.
+3. **Allocate** with quality-aware routing and read why each annotator received each task.
+4. Click **Advance workday**: production, adaptive QA sampling, synthetic verdicts, and the clock moves forward one working day.
+5. **Quality insights**: see two annotators flagged *At risk* and fully reviewed, three *Trusted* and spot-checked, and the delivered-accuracy estimate.
+6. **Delivery**: check the gates and their evidence; repeat workdays until the campaign is ready.
+
+Press <kbd>?</kbd> anywhere for shortcuts and a glossary; <kbd>1</kbd>–<kbd>9</kbd> switch pages.
+
+Synthetic ground truth: annotator accuracies are fixed per worker (0.84–0.99) and hidden from the QA engine, which must infer quality from verdicts.
+
+---
+
+## Architecture
+
+Python 3.12 · FastAPI · SQLAlchemy 2 · Pydantic 2 · SQLite — React 18 · TypeScript · Vite · Tailwind CSS.
 
 ```mermaid
 graph TD
-    A[Client Campaign Intake] --> B[Domain Calibration Engine]
-    B -->|Passed Qualification| C[Date-Scoped Capacity Tracker]
-    C --> D[Round-Robin Allocation Engine]
-    D --> E[10-State Execution State Machine]
-    E --> F[QA Sampling & Review Engine]
-    F -->|Rework <= 3| E
-    F -->|Escalated| G[Escalation Lifecycle Engine]
-    E --> H[SLA Risk Engine]
-    F --> I[5-Gate Delivery Readiness Engine]
-    H --> J[Manager Today Cockpit]
+    A[Campaign intake] --> B[Calibration & qualification]
+    B --> C[Date-scoped capacity]
+    C --> D[Allocation: balanced or quality-aware]
+    D --> E[10-state task machine]
+    E --> F[Adaptive QA sampling]
+    F -->|verdicts| T[Annotator trust tiers]
+    T --> F
+    T --> D
+    F -->|rework ≤ 3| E
+    F -->|escalate| G[Escalation lifecycle]
+    E --> H[SLA rules + Monte Carlo forecast]
+    F --> I[Delivery gates: design-weighted quality]
+    H --> J[Today decision brief]
     I --> J
-    J --> K[Persistent Audit Event Stream]
 ```
 
-### Key Functional Capabilities
-
-- **Date-Scoped Capacity Enforcement**: Workers have explicit daily capacities (`max_daily_capacity`, `allocated_for_date`, `remaining_capacity_for_date`). Tasks are allocated strictly against operational dates without global ambiguity.
-- **Conditional Qualification Engine**: Respects `campaign.calibration_required`. If calibration is required, worker qualification for the domain must be `PASSED`; otherwise, allocation is blocked.
-- **Round-Robin Allocation Engine**: Allocates task backlogs across qualified workers balanced by remaining capacity ratio, existing allocated count, and worker ID sorting.
-- **10-State Task Execution State Machine**: Validates transitions (`UNASSIGNED` → `ASSIGNED` → `IN_PROGRESS` → `SUBMITTED` → `IN_REVIEW` → `ACCEPTED` / `REWORK_REQUIRED` / `BLOCKED` / `ESCALATED` → `COMPLETED`).
-- **QA Sampling & Review Engine**: Deterministically samples submitted tasks based on campaign `review_sampling_pct`. Unsampled tasks complete automatically; sampled tasks undergo immutable QA review with enforced maximum 3 rework attempts.
-- **Multi-Factor SLA Risk Engine**: Calculates capacity ratios (`CR = available_capacity / required_daily_rate`) and evaluates SLA overrides (`CAMPAIGN_OVERDUE`, `ZERO_ELIGIBLE_CAPACITY`, `CRITICAL_ESCALATION_OPEN`, `REVIEW_BACKLOG_CRITICAL`, `BLOCKER_VOLUME_CRITICAL`).
-- **5-Gate Mandatory Delivery Readiness Checklist**: Evaluates Volume Completeness (100%), QA Sampling Target, Quality Threshold, Zero Critical Escalations, and Zero Blocked Tasks.
+Key modules: `services/quality_service.py` (trust, sampling, estimators), `services/forecast_service.py`, `services/allocation_service.py`, `services/transaction.py`, `idempotency.py`, `services/clock_service.py`.
 
 ---
 
-## ⚡ Deterministic Public Demo Experience
+## Running locally
 
-OpsPilot includes a dedicated, zero-configuration **Public Demo Bootstrap Engine** designed to showcase full operational capabilities to recruiters and hiring leads in **2–3 minutes**.
+Prerequisites: Python 3.12, Node.js 20+.
 
-### Demo Scenario Overview
-- **Campaign**: *"Multilingual AI Response Evaluation"* (2,000 synthetic tasks, 16 workers).
-- **Initial Unhealthy State**: Starts in **CRITICAL SLA** status due to an open critical guideline escalation (`Guidelines Ambiguity: Escalated Model Preference Standard`).
-- **Data Provenance**: Explicitly tagged with metadata (`scenario_name`, `scenario_version`, `seed_identifier`, `synthetic: true`).
-
-### 6-Step Recruiter Walkthrough Flow
-
-1. **Load Demo Scenario**: Click `🚀 Load Public Demo Scenario` on the Today Cockpit.
-2. **Inspect Today Cockpit**: View the initial `CRITICAL` SLA status banner and active critical escalation.
-3. **Resolve Escalation**: Navigate to **QA & Escalations**, inspect the guideline issue, and click `Update Status` → `RESOLVED`.
-4. **Check Calibration**: Navigate to **Calibration** to verify annotator qualifications and domain attempt scores.
-5. **Execute Allocation**: Navigate to **Allocations** and click `⚡ Trigger Allocation Run` to distribute the unallocated backlog.
-6. **Advance Workday & Verify Delivery**: Click `⚡ Advance Workday` in the header bar to simulate worker task completion and QA reviews, then inspect **Delivery Readiness** to view gate verification.
-
-### Public Demo API Endpoints
-- `POST /api/v1/demo/bootstrap`: Idempotently seeds or resets the synthetic demo scenario.
-- `POST /api/v1/demo/advance-workday`: Executes real service state machine transitions across active demo tasks.
-- `POST /api/v1/demo/reset`: Safely purges demo-owned entities and re-seeds baseline scenario.
-- `GET /api/v1/demo/provenance`: Returns metadata confirming scenario version and synthetic status.
-
----
-
-## 🛡️ Truthful Claims Audit & Scope Lock
-
-To maintain complete professional integrity, OpsPilot explicitly declares its boundaries:
-
-| Claim Category | Implementation Status | Technical Details |
-| :--- | :--- | :--- |
-| **Deterministic Core** | **VERIFIED IMPLEMENTED** | Rules-based state machine, capacity tracker, SLA engine, QA sampling, delivery gates. |
-| **LLM / AI Logic** | **NOT INCLUDED BY DESIGN** | No artificial intelligence, LLM prompts, ML models, or RAG pipelines. |
-| **Autonomous Agents** | **NOT INCLUDED BY DESIGN** | Operations are managed via explicit manager UI controls and rules. |
-| **DataQual Integration** | **DECOUPLED** | OpsPilot operates as an independent campaign control application. |
-| **Production Deployment** | **LOCAL DEMO ONLY** | Configured for local development, staging preview, and evaluation. |
-
----
-
-## 💻 Technology Stack
-
-### Backend
-- **Python 3.13+** with **FastAPI** async web framework.
-- **SQLAlchemy 2.0** ORM with **SQLite** database.
-- **Pydantic V2** data validation and response schemas.
-- **Pytest** with `pytest-cov` for automated backend unit/integration testing (92% coverage).
-- **Ruff** & **Pyright** for strict linting and type checking.
-
-### Frontend
-- **React 18** with **TypeScript** & **Vite** build tooling.
-- **Tailwind CSS** custom design system with WCAG 2.1 AA high-contrast dark theme.
-- **Lucide React** icon suite.
-- **Playwright** E2E test framework with `@axe-core/playwright` automated accessibility testing.
-
----
-
-## 🚀 Quickstart & Local Verification Instructions
-
-### 1. Prerequisites
-- Python 3.13+ installed.
-- Node.js 18+ and npm installed.
-
-### 2. Backend Setup & Test Execution
 ```bash
-# Navigate to project root
-cd C:\Users\kveig\Documents\AI-Career-Tracker\OpsPilot
-
-# Activate virtual environment (Windows)
-.\.venv\Scripts\activate
-
-# Run backend unit and integration test suite
-pytest tests/backend/ -v --cov=app --cov-report=term-missing
-
-# Run code quality checks
-ruff check backend/app
-pyright backend/app
+# Backend (from the repository root)
+python -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+cd backend && DATABASE_PATH=/tmp/opspilot-dev.db uvicorn app.main:app --reload --port 8000
 ```
 
-### 3. Frontend Setup & Build Verification
 ```bash
-# Navigate to frontend directory
+# Frontend (second terminal)
 cd frontend
-
-# Install dependencies
-npm install
-
-# Run TypeScript type check and ESLint
-npm run typecheck
-npm run lint
-
-# Build production bundle
-npm run build
-
-# Run Playwright E2E & Axe accessibility test suite
-npx playwright test
+npm ci
+npm run dev          # http://localhost:3000, proxies /api to 127.0.0.1:8000
 ```
 
-### 4. Running Application Locally
+Set `OPSPILOT_DEV_API_URL` to point the dev proxy at another port. Use a disposable `DATABASE_PATH` for experiments; opening an empty database seeds the demo.
+
+<a id="verification"></a>
+## Verification
+
 ```bash
-# Terminal 1: Start FastAPI Backend
-uvicorn backend.app.main:app --reload --port 8000
-
-# Terminal 2: Start Vite Frontend Dev Server
-cd frontend
-npm run dev
+pytest tests/backend/ --cov=app --cov-fail-under=90   # 70 tests, 94% coverage
+ruff check backend/app && pyright backend/app
+cd frontend && npm run typecheck && npm run lint && npm run test -- --run && npm run build
+npx playwright test --workers=1                          # axe accessibility, operational flows, recruiter journey, responsive
+python scripts/benchmark_adaptive_qa.py --worlds 40      # adaptive vs flat QA evidence
 ```
 
-Open browser at `http://localhost:5173` to experience OpsPilot!
+Playwright specs that touch the public deployment or the separate portfolio site only run with `OPSPILOT_E2E_EXTERNAL=1`. Automated axe checks are not a WCAG certification.
 
 ---
 
-## 📄 License & Provenance
+## Scope and honesty
 
-Developed as part of the AI Career Portfolio project suite. All synthetic demo datasets and campaign scenarios are synthetic and designed exclusively for technical demonstration.
+| Area | Status |
+| --- | --- |
+| Deterministic operations core, audit trail | Implemented and tested |
+| Adaptive QA, quality-aware routing, design-weighted estimates | Implemented; validated on synthetic simulations |
+| Completion forecast | Monte Carlo planning aid with listed assumptions; not backtested |
+| SLA status | Rules-based thresholds, not a predictive model |
+| LLM / ML components | None |
+| Authentication, multi-tenancy, hosted backups | Not implemented |
+
+Licensed under the terms in [LICENSE](LICENSE). All demo data is synthetic.

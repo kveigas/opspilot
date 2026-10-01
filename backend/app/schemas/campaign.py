@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CampaignBase(BaseModel):
@@ -11,6 +11,7 @@ class CampaignBase(BaseModel):
     total_volume: int = Field(..., gt=0)
     target_quality_pct: float = Field(95.0, ge=50.0, le=100.0)
     review_sampling_pct: float = Field(20.0, ge=0.0, le=100.0)
+    qa_policy: str = Field("FLAT", pattern="^(FLAT|ADAPTIVE)$")
     target_daily_throughput: int = Field(..., gt=0)
     start_date: date
     due_date: date
@@ -41,6 +42,9 @@ class CampaignUpdate(BaseModel):
     target_daily_throughput: int | None = Field(None, gt=0)
     required_annotators: int | None = Field(None, ge=1)
     required_reviewers: int | None = Field(None, ge=0)
+    qa_policy: str | None = Field(None, pattern="^(FLAT|ADAPTIVE)$")
+    review_sampling_pct: float | None = Field(None, ge=0.0, le=100.0)
+    target_quality_pct: float | None = Field(None, ge=50.0, le=100.0)
 
 
 class CampaignResponse(CampaignBase):
@@ -48,6 +52,7 @@ class CampaignResponse(CampaignBase):
     status: str
     created_at: datetime
     updated_at: datetime
+    operational_date: date | None = None
+    simulated_clock: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

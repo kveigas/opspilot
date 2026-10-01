@@ -3,7 +3,8 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Optional
 
 from app.database import Base
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String
+from app.models.types import UTCDateTime
+from sqlalchemy import Date, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -26,14 +27,18 @@ class Task(Base):
     assigned_worker_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("workers.id", ondelete="SET NULL"), nullable=True)
     allocation_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("allocations.id", ondelete="SET NULL"), nullable=True)
     operational_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # QA sampling design: the probability this task had of being selected for review and the
+    # worker trust tier that set it. Required for unbiased (inverse-probability) quality estimates.
+    qa_sample_probability: Mapped[float | None] = mapped_column(Float, nullable=True)
+    qa_sampling_tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+        UTCDateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
     )
-    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     campaign: Mapped["Campaign"] = relationship("Campaign")
     assigned_worker: Mapped[Optional["Worker"]] = relationship("Worker")

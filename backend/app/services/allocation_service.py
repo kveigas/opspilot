@@ -1,4 +1,5 @@
 import json
+import uuid
 from datetime import UTC, date, datetime, timedelta
 
 from app.models.allocation import Allocation, AllocationRun
@@ -7,20 +8,32 @@ from app.models.capacity import WorkerDailyCapacity
 from app.models.task import Task
 from app.models.worker import Worker
 from app.services.audit_service import log_audit
+from app.services.clock_service import get_operational_date
 from app.services.qualification_helper import is_worker_qualified_for_campaign
+from app.services.quality_service import TIER_ORDER, trust_by_worker
+from app.services.transaction import atomic
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy import case
+from sqlalchemy.orm import Session, selectinload
 
 PRIORITY_RANK = {"URGENT": 1, "HIGH": 2, "MEDIUM": 3, "LOW": 4}
+ALLOCATION_STRATEGIES = {"BALANCED", "QUALITY_AWARE"}
+HIGH_STAKES_PRIORITIES = {"URGENT", "HIGH"}
 
 
+@atomic
 def trigger_allocation_run(
     db: Session,
     campaign_id: str,
-    operational_date: date,
+    operational_date: date | None = None,
     max_tasks_to_allocate: int | None = None,
+    strategy: str = "BALANCED",
 ) -> AllocationRun:
     db.expire_all()
+
+    strategy = strategy.upper()
+    if strategy not in ALLOCATION_STRATEGIES:
+        raise HTTPException(status_code=422, detail=f"Unknown allocation strategy '{strategy}'.")
 
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not campaign:
@@ -28,6 +41,8 @@ def trigger_allocation_run(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Campaign with id '{campaign_id}' not found."
         )
+    operational_date = operational_date or get_operational_date(db, campaign_id)
+    trust = trust_by_worker(db, campaign) if strategy == "QUALITY_AWARE" else {}
 
     # 1. Gather unassigned allocatable tasks for this campaign
     unassigned_tasks_query = (
@@ -36,7 +51,8 @@ def trigger_allocation_run(
             Task.campaign_id == campaign_id,
             Task.state == "UNASSIGNED",
         )
-        .order_by(Task.created_at.asc())
+        .options(selectinload(Task.skills))
+        .order_by(case(PRIORITY_RANK, value=Task.priority, else_=5), Task.created_at.asc(), Task.id.asc())
     )
 
     if max_tasks_to_allocate:
@@ -129,6 +145,7 @@ def trigger_allocation_run(
         tasks_unallocated=0,
         workers_used=0,
         capacity_consumed=0,
+        strategy=strategy,
     )
     db.add(run)
     db.flush()
@@ -140,21 +157,17 @@ def trigger_allocation_run(
             if not active_annotators:
                 unallocated_reason_counts["NO_ACTIVE_ANNOTATOR"] = tasks_considered
             else:
-                for w in active_annotators:
-                    w_skills = {s.skill_tag.lower().strip() for s in w.skills}
-                    if not campaign_skills.issubset(w_skills):
-                        unallocated_reason_counts["MISSING_REQUIRED_SKILL"] += tasks_considered
-                    elif not is_worker_qualified_for_campaign(db, w, campaign):
-                        unallocated_reason_counts["QUALIFICATION_REQUIRED"] += tasks_considered
-                    elif capacities_map[str(w.id)].remaining_capacity_for_date <= 0:
-                        unallocated_reason_counts["NO_CAPACITY"] += tasks_considered
-                    else:
-                        unallocated_reason_counts["NO_ELIGIBLE_WORKER"] += tasks_considered
+                # One blocking reason per task, not one per rejected worker.
+                for task in unassigned_tasks:
+                    required = campaign_skills | {s.skill_tag.lower().strip() for s in task.skills}
+                    skilled = [w for w in active_annotators if required.issubset({s.skill_tag.lower().strip() for s in w.skills})]
+                    qualified = [w for w in skilled if is_worker_qualified_for_campaign(db, w, campaign)]
+                    reason = "MISSING_REQUIRED_SKILL" if not skilled else "QUALIFICATION_REQUIRED" if not qualified else "NO_CAPACITY"
+                    unallocated_reason_counts[reason] += 1
 
         run.tasks_unallocated = tasks_considered
         run.unallocated_reasons_json = json.dumps(unallocated_reason_counts)
-        db.commit()
-        db.refresh(run)
+        db.flush()
         return run
 
     # Round-Robin Balanced Allocation Loop
@@ -164,20 +177,58 @@ def trigger_allocation_run(
     now = datetime.now(UTC)
     allocations_to_add: list[Allocation] = []
 
+    worker_skills = {str(w.id): {s.skill_tag.lower().strip() for s in w.skills} for w in eligible_workers}
+
+    def _trust_rank(w: Worker) -> tuple:
+        # Best tier first; within a tier spread work by remaining capacity rather than piling it
+        # onto one annotator (posterior differences inside a tier are mostly sampling noise).
+        assessment = trust.get(str(w.id))
+        cap = capacities_map[str(w.id)]
+        remaining_ratio = cap.remaining_capacity_for_date / cap.max_daily_capacity if cap.max_daily_capacity else 0.0
+        tier_rank = TIER_ORDER[assessment.tier] if assessment else TIER_ORDER["PROBATION"]
+        posterior = assessment.posterior_mean if assessment else 0.0
+        return (tier_rank, -remaining_ratio, -posterior, str(w.id))
+
     for task in unassigned_tasks:
+        required_skills = campaign_skills | {s.skill_tag.lower().strip() for s in task.skills}
+        skill_matched = False
         # Find next eligible worker with remaining capacity
         allocated_task = False
         attempts = 0
 
+        # QUALITY_AWARE: high-stakes work goes to the annotator with the strongest QA record
+        # (tier, then posterior mean); everything else keeps balanced round-robin.
+        routed_order: list[Worker] | None = None
+        if strategy == "QUALITY_AWARE" and task.priority in HIGH_STAKES_PRIORITIES:
+            routed_order = sorted(eligible_workers, key=_trust_rank)
+
         while attempts < len(eligible_workers):
-            candidate_worker = eligible_workers[worker_index % len(eligible_workers)]
-            worker_index += 1
+            if routed_order is not None:
+                candidate_worker = routed_order[attempts]
+            else:
+                candidate_worker = eligible_workers[worker_index % len(eligible_workers)]
+                worker_index += 1
             attempts += 1
+
+            if not required_skills.issubset(worker_skills[str(candidate_worker.id)]):
+                continue
+            skill_matched = True
 
             cap = capacities_map[str(candidate_worker.id)]
             if cap.remaining_capacity_for_date > 0:
+                if routed_order is not None:
+                    assessment = trust.get(str(candidate_worker.id))
+                    routing_reason = (
+                        f"QUALITY_AWARE: {task.priority} task routed to {assessment.tier} annotator "
+                        f"(P(meets target)={assessment.prob_meets_target:.2f}, {assessment.reviews} QA verdicts)"
+                        if assessment
+                        else f"QUALITY_AWARE: {task.priority} task; no QA record yet (PROBATION)"
+                    )
+                else:
+                    routing_reason = f"{strategy}: round-robin by remaining capacity"
                 # Build allocation object
                 alloc = Allocation(
+                    id=str(uuid.uuid4()),
                     allocation_run_id=str(run.id),
                     campaign_id=campaign_id,
                     task_id=str(task.id),
@@ -185,6 +236,7 @@ def trigger_allocation_run(
                     operational_date=operational_date,
                     allocated_at=now,
                     status="ACTIVE",
+                    reason=routing_reason,
                 )
                 allocations_to_add.append(alloc)
 
@@ -204,7 +256,7 @@ def trigger_allocation_run(
                 break
 
         if not allocated_task:
-            unallocated_reason_counts["NO_CAPACITY"] += 1
+            unallocated_reason_counts["NO_CAPACITY" if skill_matched else "MISSING_REQUIRED_SKILL"] += 1
 
     db.add_all(allocations_to_add)
 
@@ -214,8 +266,7 @@ def trigger_allocation_run(
     run.capacity_consumed = tasks_allocated_count
     run.unallocated_reasons_json = json.dumps(unallocated_reason_counts)
 
-    db.commit()
-    db.refresh(run)
+    db.flush()
 
     log_audit(
         db,
@@ -223,7 +274,7 @@ def trigger_allocation_run(
         entity_type="ALLOCATION_RUN",
         entity_id=str(run.id),
         summary=(
-            f"Allocation run completed for campaign '{campaign.name}' on {operational_date}: "
+            f"{strategy} allocation run completed for campaign '{campaign.name}' on {operational_date}: "
             f"{tasks_allocated_count}/{tasks_considered} tasks allocated across {len(workers_used_set)} workers."
         ),
     )
@@ -231,6 +282,7 @@ def trigger_allocation_run(
     return run
 
 
+@atomic
 def release_allocation(db: Session, allocation_id: str, reason: str | None = "MANUAL_RELEASE") -> Allocation:
     alloc = db.query(Allocation).filter(Allocation.id == allocation_id).first()
     if not alloc:
@@ -244,6 +296,10 @@ def release_allocation(db: Session, allocation_id: str, reason: str | None = "MA
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Allocation '{allocation_id}' is already {alloc.status}."
         )
+
+    task = db.query(Task).filter(Task.id == str(alloc.task_id)).first()
+    if task and task.state != "ASSIGNED":
+        raise HTTPException(409, "Only unstarted ASSIGNED work can be released; preserve completed and QA evidence.")
 
     now = datetime.now(UTC)
     alloc.status = "RELEASED"
@@ -271,8 +327,7 @@ def release_allocation(db: Session, allocation_id: str, reason: str | None = "MA
         task.allocation_id = None
         task.updated_at = now
 
-    db.commit()
-    db.refresh(alloc)
+    db.flush()
 
     log_audit(
         db,
