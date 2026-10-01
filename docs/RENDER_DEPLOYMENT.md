@@ -36,3 +36,4 @@ Render free-tier web services spin down after 15 minutes of inactivity:
 - **Cold Start Delay**: Initial API response may take 20–40 seconds while container boots up.
 - **Ephemeral Storage**: Free-tier filesystems reset upon redeployment or cold restarts.
 - **Resilience Design**: OpsPilot handles ephemeral state by providing the idempotent `POST /api/v1/demo/bootstrap` endpoint. Any user can re-seed the public demo scenario instantaneously.
+- **Instant public demo**: the GitHub Pages build runs `scripts/build_demo_snapshot.py`, which seeds the demo in a throwaway database and stores every read the pages make. If the API does not answer within 1.5 seconds, the frontend shows this snapshot, wakes the API (seeding the demo if the restart left it empty) and then switches to live requests. Actions wait for the live API.

@@ -11,6 +11,7 @@ import { QAPage } from './pages/QAPage';
 import { QualityPage } from './pages/QualityPage';
 import { DeliveryPage } from './pages/DeliveryPage';
 import { CampaignProvider, useCampaigns } from './state/CampaignContext';
+import { LIVE_EVENT, type LiveSwitchDetail } from './api/demoSnapshot';
 import { ROUTES, routeFromHash } from './routes';
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -54,6 +55,20 @@ function Shell() {
   const refreshCurrentPage = useCallback(() => {
     void refreshCampaigns();
     setRefreshVersion((version) => version + 1);
+  }, [refreshCampaigns]);
+
+  // The instant-demo snapshot hands over to the live API. A freshly seeded demo is identical to
+  // what is on screen; otherwise reload from the live API, but leave a page whose action is about
+  // to run alone (it refreshes itself when the action finishes).
+  useEffect(() => {
+    const onLive = (event: Event) => {
+      const { seeded, actionPending } = (event as CustomEvent<LiveSwitchDetail>).detail;
+      if (seeded) return;
+      void refreshCampaigns();
+      if (!actionPending) setRefreshVersion((version) => version + 1);
+    };
+    window.addEventListener(LIVE_EVENT, onLive);
+    return () => window.removeEventListener(LIVE_EVENT, onLive);
   }, [refreshCampaigns]);
 
   return (

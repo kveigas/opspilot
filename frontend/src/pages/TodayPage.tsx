@@ -27,7 +27,15 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isBootstrapping, setIsBootstrapping] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [slowLoad, setSlowLoad] = useState<boolean>(false);
   const sequence = useRef(0);
+
+  // Explain a long wait only when one happens (an idle demo server without the instant snapshot).
+  useEffect(() => {
+    if (!isLoading) { setSlowLoad(false); return; }
+    const timer = setTimeout(() => setSlowLoad(true), 3000);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   const loadData = async () => {
     const current = ++sequence.current;
@@ -122,7 +130,9 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onNavigate }) => {
 
       {isLoading && !cockpit ? (
         <div className="animate-pulse rounded-xl border border-slate-800 bg-slate-900/60 p-8 text-center text-sm text-slate-300">
-          {isBootstrapping ? 'Preparing the synthetic demo campaign…' : 'Loading the cockpit… (a cold start can take ~20 seconds)'}
+          {isBootstrapping ? 'Preparing the synthetic demo campaign…'
+            : slowLoad ? 'Loading the cockpit… The demo server was idle and can take up to a minute to start.'
+            : 'Loading the cockpit…'}
         </div>
       ) : cockpit && (
         <>
