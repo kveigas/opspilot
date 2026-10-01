@@ -1,7 +1,7 @@
 # OpsPilot — Human Data Campaign Operations
 
 [![Release](https://img.shields.io/badge/Release-v1.0.0--rc1-emerald.svg)](https://github.com/kveigas/opspilot)
-[![Backend coverage](https://img.shields.io/badge/Backend_coverage-94%25-brightgreen.svg)](#verification)
+[![Backend coverage](https://img.shields.io/badge/Backend_coverage-95%25-brightgreen.svg)](#verification)
 [![Accessibility](https://img.shields.io/badge/Accessibility-automated_axe_checks-blue.svg)](#verification)
 
 OpsPilot is an operations cockpit for teams that run human-data programmes (annotation, RLHF preference ranking, AI evaluation). It covers the daily loop a campaign manager owns: intake, qualification, allocation, production, QA, escalations and delivery — with every decision explained and audited.
@@ -9,7 +9,8 @@ OpsPilot is an operations cockpit for teams that run human-data programmes (anno
 It is a **portfolio prototype running on synthetic data**. Authentication, tenant isolation, production concurrency and hosted backups are not implemented; do not use it for real client data.
 
 - Live demo: https://kveigas.github.io/opspilot/ · API: https://opspilot-c5y3.onrender.com (`/docs` for OpenAPI)
-- Latest local changes are documented in [docs/TECHNICAL_REASSESSMENT.md](docs/TECHNICAL_REASSESSMENT.md) and have not been deployed yet.
+- The public demo opens instantly. The API runs on a free tier that sleeps when idle, so the demo's deterministic starting state is computed at deploy time by the same backend code and shown while the API wakes (up to a minute); actions run as soon as it is ready.
+- Reviews, fixes and their evidence are recorded in [docs/TECHNICAL_REASSESSMENT.md](docs/TECHNICAL_REASSESSMENT.md).
 
 ---
 
@@ -111,7 +112,7 @@ Set `OPSPILOT_DEV_API_URL` to point the dev proxy at another port. Use a disposa
 ## Verification
 
 ```bash
-pytest tests/backend/ --cov=app --cov-fail-under=90   # 70 tests, 94% coverage
+pytest tests/backend/ --cov=app --cov-fail-under=90   # 74 tests, 95% coverage
 ruff check backend/app && pyright backend/app
 cd frontend && npm run typecheck && npm run lint && npm run test -- --run && npm run build
 npx playwright test --workers=1                          # axe accessibility, operational flows, recruiter journey, responsive

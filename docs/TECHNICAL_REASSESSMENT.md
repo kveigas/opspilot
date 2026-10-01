@@ -1,6 +1,6 @@
 # OpsPilot: technical reassessment and local improvements
 
-Review window: 29–30 September 2026. Starting checkout: `f36ef4f`, main. The existing `v1.0.0-rc1` tag and live deployment were not changed. All new work remains local for review.
+Review window: 29–30 September 2026. Starting checkout: `f36ef4f`, main. The existing `v1.0.0-rc1` tag and live deployment were not changed. All new work remained local for review until its release on 1 October 2026 ([kveigas/opspilot#1](https://github.com/kveigas/opspilot/pull/1)).
 
 ## Verdict
 
@@ -77,7 +77,7 @@ Implementing the transparent state machine, transaction tests and an auditable h
 
 ## Addendum — second pass, 30 September 2026
 
-Still local, uncommitted and undeployed.
+Released 1 October 2026 ([kveigas/opspilot#1](https://github.com/kveigas/opspilot/pull/1)).
 
 ### Defects found and fixed
 
@@ -110,3 +110,15 @@ Backend 70 tests, 94% coverage; ruff and pyright clean. Frontend 34 unit tests, 
 ### Still open
 
 Authentication/tenancy, PostgreSQL concurrency tests, hosted backup/restore, reviewer-error modelling (the estimators assume correct verdicts), drift detection for annotator quality over time, and backtesting the forecast on real throughput data.
+
+---
+
+## Addendum — instant public demo, 1 October 2026
+
+**Problem.** The API runs on Render's free tier, which sleeps after 15 minutes idle; a measured cold start took 32 s, during which a first-time visitor saw only a loading message. A paid always-on instance was declined, and keep-alive pings cannot cover a month within the free 750 instance-hours.
+
+**Design.** The demo is deterministic (fixed ids and simulation dates), so `scripts/build_demo_snapshot.py` seeds it in a throwaway database during the Pages build and stores every read the pages make (42 responses plus the history of all 1,717 listable tasks in one lazily loaded file; 2.1 MB). On first request the client probes `/health` for 1.5 s: an awake API is used directly; otherwise reads come from the snapshot while the API wakes, seeds the demo if its ephemeral database is empty, and takes over. Actions wait for the live API; a status label says so. A freshly seeded API equals the snapshot, so the handover is silent; otherwise the page reloads from the live API (unless an action is about to run).
+
+**Defect found.** The SLA audit summary listed reasons in set order, which varied per process; it is now sorted.
+
+**Verification.** A backend test builds the snapshot and asserts that every stored response equals a freshly seeded API (timestamps and random ids masked), that every listed task has its history, and that the builder's task filters match the pages. Backend 74 tests, 95.7% coverage, Ruff and Pyright clean; frontend 41 unit tests, typecheck, lint, build; Playwright 18/18. In a browser with every API request held (sleeping server): Today renders in about 2 s (1.5 s of it is the probe), other pages in under 0.13 s, task history in 0.1 s; an action queued while asleep runs 1.4 s after the API wakes; axe reports no violations with the status label at 1440 and 390 px.
