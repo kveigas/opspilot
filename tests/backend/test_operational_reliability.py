@@ -110,6 +110,7 @@ def test_additive_columns_upgrade_an_rc1_database(tmp_path):
         conn.execute(text("CREATE TABLE tasks (id VARCHAR(36) PRIMARY KEY)"))
         conn.execute(text("CREATE TABLE campaigns (id VARCHAR(36) PRIMARY KEY)"))
     added = ensure_additive_columns(engine)
-    assert set(added) == {"tasks.qa_sample_probability", "tasks.qa_sampling_tier", "campaigns.qa_policy"}
+    assert set(added) == {"tasks.qa_sample_probability", "tasks.qa_sampling_tier", "tasks.completed_on", "campaigns.qa_policy"}
     assert "qa_policy" in {c["name"] for c in inspect(engine).get_columns("campaigns")}
+    assert "completed_on" in {c["name"] for c in inspect(engine).get_columns("tasks")}
     assert ensure_additive_columns(engine) == []  # Idempotent

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { ExecutionPage } from '../src/pages/ExecutionPage';
+import { api } from '../src/api/client';
 
 const mocks = vi.hoisted(() => ({ transitionTaskState: vi.fn().mockResolvedValue({ state: 'IN_PROGRESS' }) }));
 
@@ -34,6 +35,32 @@ describe('ExecutionPage Component', () => {
     expect(screen.getByRole('heading', { name: 'Production execution' })).toBeInTheDocument();
     expect(await screen.findByText('50%')).toBeInTheDocument();
     expect(await screen.findByText('Annotator One')).toBeInTheDocument();
+  });
+
+  it('labels the day basis of throughput', async () => {
+    vi.mocked(api.getCampaignExecution).mockResolvedValueOnce({
+      campaign_id: 'c1', total_tasks: 10, completion_pct: 50.0, remaining_backlog: 5, state_counts: { COMPLETED: 5 },
+      throughput: { completed_today: 0, completed_last_7_days: 5, average_daily_completed_last_7_days: 0.7, reference_date: '2026-08-12', simulated_clock: true },
+    });
+    render(<ExecutionPage />);
+    expect(await screen.findByText(/Days follow the simulated clock/)).toBeInTheDocument();
+  });
+
+  it('keeps the newest filter result when an older reload lands last', async () => {
+    let releaseOld: (rows: any[]) => void = () => {};
+    const getTasks = vi.mocked(api.getTasks);
+    getTasks.mockClear();
+    getTasks
+      .mockImplementationOnce(() => new Promise(resolve => { releaseOld = resolve; }))  // initial "All states" load, slow
+      .mockResolvedValueOnce([{ id: 'p1', external_reference: 'SYN-NEW', priority: 'HIGH', state: 'IN_PROGRESS', assigned_worker_id: 'w1', rework_count: 0 }]);
+    render(<ExecutionPage />);
+    await waitFor(() => expect(getTasks).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByLabelText('State'), { target: { value: 'IN_PROGRESS' } });
+    expect(await screen.findByText('SYN-NEW')).toBeInTheDocument();
+    releaseOld([{ id: 'a1', external_reference: 'SYN-OLD', priority: 'HIGH', state: 'ASSIGNED', assigned_worker_id: 'w1', rework_count: 0 }]);
+    await new Promise(r => setTimeout(r, 20));
+    expect(screen.queryByText('SYN-OLD')).not.toBeInTheDocument();
+    expect(screen.getByText('SYN-NEW')).toBeInTheDocument();
   });
 
   it('starts a task through the real state endpoint contract', async () => {

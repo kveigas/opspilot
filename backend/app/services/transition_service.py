@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 from app.models.task import Task
 from app.services.audit_service import log_audit
+from app.services.clock_service import get_operational_date
 from app.services.transaction import atomic
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -52,6 +53,7 @@ def transition_task_state(
         task.submitted_at = now
     elif target_state == "COMPLETED":
         task.completed_at = now
+        task.completed_on = get_operational_date(db, str(task.campaign_id))
 
     db.flush()
 

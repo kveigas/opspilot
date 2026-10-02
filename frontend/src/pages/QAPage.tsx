@@ -180,8 +180,11 @@ export const QAPage: React.FC = () => {
       const refreshed = await loadData();
       const tierNote = result?.sent_to_review_by_tier && Object.keys(result.sent_to_review_by_tier).length
         ? ` (${Object.entries(result.sent_to_review_by_tier).map(([t, n]) => `${n} ${humanize(t).toLowerCase()}`).join(', ')})` : '';
+      const nothingSubmitted = (result?.tasks_sent_to_review ?? 0) === 0 && (result?.tasks_auto_completed ?? 0) === 0;
       setFeedback(refreshed
-        ? { kind: 'success', message: `${result?.tasks_sent_to_review ?? 0} tasks sampled for review${tierNote}; ${result?.tasks_auto_completed ?? 0} completed without review.` }
+        ? nothingSubmitted
+          ? { kind: 'success', message: 'No submitted work to sample. Submit tasks in Execute first.' }
+          : { kind: 'success', message: `${result?.tasks_sent_to_review ?? 0} tasks sampled for review${tierNote}; ${result?.tasks_auto_completed ?? 0} completed without review.` }
         : { kind: 'error', message: 'Sampling completed, but the queue could not refresh. Retry the refresh; do not repeat the action.' });
     } catch (err: any) {
       setFeedback({ kind: 'error', message: `Sampling failed: ${err?.message ?? 'please retry.'}` });
@@ -289,7 +292,15 @@ export const QAPage: React.FC = () => {
         {subTab === 'review' && (
           isLoading && reviewTasks.length === 0 ? <p className="p-6 text-sm text-slate-400">Loading review queue…</p>
           : reviewTasks.length === 0 ? (
-            <div className="p-6"><EmptyState title="Nothing waiting for review">Advance the workday or sample submitted work to fill the queue.</EmptyState></div>
+            <div className="p-6">
+              <EmptyState
+                title="Nothing waiting for review"
+                action={<a href="#/execution" className="inline-flex items-center rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-700">Open Execute</a>}
+              >
+                Advance workday already reviews the work it samples, so it leaves this queue empty. To review by hand,
+                Start and Submit tasks in Execute, then come back and choose Sample submitted work.
+              </EmptyState>
+            </div>
           ) : (
             <ul className="max-h-[560px] divide-y divide-slate-800/70 overflow-y-auto" aria-label="Tasks awaiting QA review">
               {reviewTasks.map((t, index) => (

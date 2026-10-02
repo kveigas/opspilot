@@ -109,7 +109,7 @@ def test_builder_task_lists_match_the_pages() -> None:
     assert requested == set(builder.TASK_LISTS)
 
     execution = (PAGES / "ExecutionPage.tsx").read_text(encoding="utf-8")
-    assert "getTasks(selectedId, stateFilter || undefined, 100)" in execution
+    assert "getTasks(selectedId, currentFilter.current || undefined, 100)" in execution
     pipeline = re.search(r"const PIPELINE[^\[]*\[(.*?)\];", execution, re.DOTALL)
     assert pipeline
     assert re.findall(r"state: '(\w+)'", pipeline.group(1)) == builder.EXECUTION_STATES
