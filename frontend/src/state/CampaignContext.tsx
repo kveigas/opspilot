@@ -19,7 +19,7 @@ function readStored(): string {
   try { return window.localStorage.getItem(STORAGE_KEY) ?? ''; } catch { return ''; }
 }
 
-function useCampaignLoader(enabled: boolean): CampaignState {
+function useCampaignLoader(enabled: boolean, seedWhenEmpty = false): CampaignState {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<string>(readStored);
   const [loading, setLoading] = useState<boolean>(enabled);
@@ -30,7 +30,13 @@ function useCampaignLoader(enabled: boolean): CampaignState {
     setLoading(true);
     setError(null);
     try {
-      const data = (await api.getCampaigns()) ?? [];
+      let data = (await api.getCampaigns()) ?? [];
+      // A restarted free-tier server comes back empty. Seed the demo whichever page the visitor
+      // opened first (not only Today), but only after a successful, genuinely empty response.
+      if (seedWhenEmpty && data.length === 0) {
+        await api.bootstrapDemo(false);
+        data = (await api.getCampaigns()) ?? [];
+      }
       setCampaigns(data);
       // Keep a valid saved choice; otherwise prefer the simulated demo campaign, then the newest.
       setSelectedId(current => (data.some((c: any) => c.id === current)
@@ -41,7 +47,7 @@ function useCampaignLoader(enabled: boolean): CampaignState {
     } finally {
       setLoading(false);
     }
-  }, [enabled]);
+  }, [enabled, seedWhenEmpty]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -51,11 +57,13 @@ function useCampaignLoader(enabled: boolean): CampaignState {
   }, []);
 
   const selected = useMemo(() => campaigns.find(c => c.id === selectedId) ?? null, [campaigns, selectedId]);
-  return { campaigns, selectedId, selected, select, refresh, loading, error };
+  // Pages load data per selected id; hand them one only once it exists, so a saved id is not
+  // queried (and left failed) before a restarted server has re-seeded its demo.
+  return { campaigns, selectedId: selected ? selectedId : '', selected, select, refresh, loading, error };
 }
 
 export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const state = useCampaignLoader(true);
+  const state = useCampaignLoader(true, true);
   return <CampaignContext.Provider value={state}>{children}</CampaignContext.Provider>;
 };
 
