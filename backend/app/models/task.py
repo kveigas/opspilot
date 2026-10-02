@@ -39,6 +39,9 @@ class Task(Base):
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     submitted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    # Operational day of completion: the campaign's simulated clock if it has one, else the UTC date.
+    # Throughput counts by this, because completed_at is wall-clock time even in a simulation.
+    completed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     campaign: Mapped["Campaign"] = relationship("Campaign")
     assigned_worker: Mapped[Optional["Worker"]] = relationship("Worker")

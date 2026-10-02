@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { StatusBadge } from '../components/StatusBadge';
 import { TaskHistoryDialog } from '../components/TaskHistoryDialog';
 import { Button, Card, EmptyState, Feedback, PageHeader, Stat } from '../components/ui';
 import { useCampaigns } from '../state/CampaignContext';
 import { useWorkerNames } from '../state/useWorkerNames';
-import { humanize } from '../lib/format';
+import { formatDate, humanize } from '../lib/format';
 
 const PIPELINE: { state: string; label: string; tone: string }[] = [
   { state: 'UNASSIGNED', label: 'Waiting', tone: 'bg-slate-500' },
@@ -35,18 +35,26 @@ export const ExecutionPage: React.FC = () => {
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const [historyTaskId, setHistoryTaskId] = useState<string | null>(null);
 
+  // Only the newest request may update the page: a reload started before a filter change (for
+  // example after a state transition) must not overwrite the newer filter's rows when it lands last.
+  const latestRequest = useRef(0);
+  const currentFilter = useRef(stateFilter);
+  currentFilter.current = stateFilter;
+
   const loadData = async () => {
+    const request = ++latestRequest.current;
     if (!selectedId) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
       const [metrics, taskList] = await Promise.all([
         api.getCampaignExecution(selectedId).catch(() => null),
-        api.getTasks(selectedId, stateFilter || undefined, 100).catch(() => []),
+        api.getTasks(selectedId, currentFilter.current || undefined, 100).catch(() => []),
       ]);
+      if (request !== latestRequest.current) return;
       setExecutionMetrics(metrics);
       setTasks(taskList ?? []);
     } finally {
-      setIsLoading(false);
+      if (request === latestRequest.current) setIsLoading(false);
     }
   };
 
@@ -92,6 +100,13 @@ export const ExecutionPage: React.FC = () => {
               <Stat label="Daily average" value={executionMetrics.throughput?.average_daily_completed_last_7_days ?? 0} />
             </div>
           </div>
+          {executionMetrics.throughput?.reference_date && (
+            <p className="mt-2 text-xs text-slate-400 sm:text-right">
+              {executionMetrics.throughput.simulated_clock
+                ? `Days follow the simulated clock: today is ${formatDate(executionMetrics.throughput.reference_date)}. Work seeded before the simulation has no completion day, so it is not counted here.`
+                : `Days are UTC dates: today is ${formatDate(executionMetrics.throughput.reference_date)}.`}
+            </p>
+          )}
           <div className="mt-5 flex h-3 w-full overflow-hidden rounded-full bg-slate-800" role="img"
             aria-label={PIPELINE.map(p => `${counts[p.state] ?? 0} ${p.label.toLowerCase()}`).join(', ')}>
             {PIPELINE.map(p => (counts[p.state] ?? 0) > 0 && (

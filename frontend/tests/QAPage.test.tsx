@@ -47,6 +47,17 @@ describe('QAPage Component', () => {
     expect(await screen.findByText(/weaker annotators’ work is reviewed more often/)).toBeInTheDocument();
   });
 
+  it('explains how to fill an empty queue by hand', async () => {
+    mocks.getTasks.mockResolvedValue([]);
+    mocks.getTasks.mockClear();
+    render(<QAPage />);
+    await waitFor(() => expect(mocks.getTasks).toHaveBeenCalledWith('c1', 'IN_REVIEW', 100));
+    await waitFor(() => expect(screen.getByText(/Advance workday already reviews the work it samples/)).toBeInTheDocument());
+    expect(screen.getByRole('link', { name: 'Open Execute' })).toHaveAttribute('href', '#/execution');
+    fireEvent.click(screen.getByRole('button', { name: /Sample submitted work/ }));
+    expect(await screen.findByText('No submitted work to sample. Submit tasks in Execute first.')).toBeInTheDocument();
+  });
+
   it('shows annotator names and trust tiers instead of raw IDs', async () => {
     render(<QAPage />);
     expect(await screen.findAllByText('Annotator One')).toHaveLength(2);

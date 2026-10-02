@@ -17,7 +17,7 @@ Base = declarative_base()
 # Nullable columns added after RC1. create_all() never alters existing tables, so older
 # databases receive them through additive, non-destructive ALTER TABLE statements.
 ADDITIVE_COLUMNS: dict[str, dict[str, str]] = {
-    "tasks": {"qa_sample_probability": "FLOAT", "qa_sampling_tier": "VARCHAR(20)"},
+    "tasks": {"qa_sample_probability": "FLOAT", "qa_sampling_tier": "VARCHAR(20)", "completed_on": "DATE"},
     "campaigns": {"qa_policy": "VARCHAR(20)"},
     "allocation_runs": {"strategy": "VARCHAR(20)"},
 }

@@ -8,7 +8,7 @@ from app.models.capacity import WorkerDailyCapacity
 from app.models.task import Task
 from app.models.worker import Worker
 from app.services.audit_service import log_audit
-from app.services.clock_service import get_operational_date
+from app.services.clock_service import get_operational_date, is_simulated
 from app.services.qualification_helper import is_worker_qualified_for_campaign
 from app.services.quality_service import TIER_ORDER, trust_by_worker
 from app.services.transaction import atomic
@@ -373,23 +373,29 @@ def get_campaign_execution_metrics(db: Session, campaign_id: str) -> dict:
     completion_pct = round((completed_count / total_tasks * 100.0), 1) if total_tasks > 0 else 0.0
     remaining_backlog = total_tasks - completed_count
 
-    # Derived Throughput based on completed_at
-    now = datetime.now(UTC)
-    today_start = datetime(now.year, now.month, now.day, tzinfo=UTC)
-    seven_days_ago = now - timedelta(days=7)
+    # Throughput by operational day: the simulated clock for demo campaigns, the UTC date otherwise.
+    # A simulated campaign counts only tasks with a recorded completed_on (seeded history has none),
+    # because completed_at is wall-clock time and would put every completion on the real "today".
+    simulated = is_simulated(db, campaign_id)
+    reference_date = get_operational_date(db, campaign_id)
+    window_start = reference_date - timedelta(days=6)
 
     completed_today = 0
     completed_last_7_days = 0
 
     for t in tasks:
-        if t.state == "COMPLETED" and t.completed_at:
-            comp_dt = t.completed_at
-            if comp_dt.tzinfo is None:
-                comp_dt = comp_dt.replace(tzinfo=UTC)
-            if comp_dt >= today_start:
-                completed_today += 1
-            if comp_dt >= seven_days_ago:
-                completed_last_7_days += 1
+        if t.state != "COMPLETED":
+            continue
+        day = t.completed_on
+        if day is None and not simulated and t.completed_at:
+            comp_dt = t.completed_at if t.completed_at.tzinfo else t.completed_at.replace(tzinfo=UTC)
+            day = comp_dt.date()
+        if day is None:
+            continue
+        if day == reference_date:
+            completed_today += 1
+        if window_start <= day <= reference_date:
+            completed_last_7_days += 1
 
     avg_daily_7d = round(completed_last_7_days / 7.0, 1)
 
@@ -403,5 +409,7 @@ def get_campaign_execution_metrics(db: Session, campaign_id: str) -> dict:
             "completed_today": completed_today,
             "completed_last_7_days": completed_last_7_days,
             "average_daily_completed_last_7_days": avg_daily_7d,
+            "reference_date": reference_date.isoformat(),
+            "simulated_clock": simulated,
         },
     }
